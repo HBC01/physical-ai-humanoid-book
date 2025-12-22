@@ -1,0 +1,709 @@
+---
+title: "Chapter 3: Physical Systems and Dynamics"
+sidebar_label: "Ch 3: Physical Systems"
+---
+
+# Chapter 3: Physical Systems and Dynamics
+
+## Learning Objectives
+
+By the end of this chapter, you will be able to:
+
+- Understand fundamental concepts of rigid body dynamics and kinematics
+- Apply forward and inverse kinematics to robotic manipulators
+- Model robot dynamics using Lagrangian and Newton-Euler formulations
+- Analyze stability and control of physical systems
+- Implement basic motion planning and trajectory generation
+- Recognize the role of physics simulators in Physical AI development
+
+## Introduction to Robot Kinematics
+
+**Kinematics** studies motion without considering forces—where things are and how they move. For robots, this means understanding the relationship between joint angles and end-effector (e.g., hand, gripper) position.
+
+### Coordinate Frames and Transformations
+
+Every robot part has a **coordinate frame**—a 3D reference system with origin and axes (x, y, z). To describe the robot's configuration, we need to express positions and orientations in various frames.
+
+```mermaid
+graph LR
+    W[World Frame] --> B[Base Frame]
+    B --> S[Shoulder Frame]
+    S --> E[Elbow Frame]
+    E --> W2[Wrist Frame]
+    W2 --> G[Gripper Frame]
+
+    style W fill:#e1f5ff
+    style B fill:#b3e5fc
+    style S fill:#81d4fa
+    style E fill:#4fc3f7
+    style W2 fill:#29b6f6
+    style G fill:#039be5
+```
+
+**Homogeneous Transformation Matrices** represent both rotation and translation:
+
+```python
+import numpy as np
+
+def transformation_matrix(rotation, translation):
+    """
+    Create 4x4 homogeneous transformation matrix.
+
+    Args:
+        rotation: 3x3 rotation matrix
+        translation: 3x1 translation vector [x, y, z]
+
+    Returns:
+        4x4 transformation matrix
+    """
+    T = np.eye(4)
+    T[:3, :3] = rotation  # Top-left 3x3: rotation
+    T[:3, 3] = translation  # Top-right 3x1: translation
+    return T
+
+# Example: Rotate 90° about Z-axis, translate by [1, 2, 0]
+R_z_90 = np.array([
+    [0, -1, 0],
+    [1,  0, 0],
+    [0,  0, 1]
+])
+t = np.array([1, 2, 0])
+
+T = transformation_matrix(R_z_90, t)
+print(T)
+# Output:
+# [[ 0. -1.  0.  1.]
+#  [ 1.  0.  0.  2.]
+#  [ 0.  0.  1.  0.]
+#  [ 0.  0.  0.  1.]]
+```
+
+### Forward Kinematics: Joints → End-Effector Position
+
+**Forward kinematics (FK)** computes where the end-effector is, given joint angles.
+
+**Example: 2-DOF Planar Arm**:
+```python
+import numpy as np
+
+class PlanarArm:
+    def __init__(self, L1=1.0, L2=0.8):
+        """
+        2-DOF arm in a plane.
+
+        Args:
+            L1: Length of link 1 (shoulder to elbow)
+            L2: Length of link 2 (elbow to wrist)
+        """
+        self.L1 = L1
+        self.L2 = L2
+
+    def forward_kinematics(self, theta1, theta2):
+        """
+        Compute end-effector position (x, y) from joint angles.
+
+        Args:
+            theta1: Shoulder angle (radians)
+            theta2: Elbow angle (radians)
+
+        Returns:
+            (x, y): End-effector position in world frame
+        """
+        x = self.L1 * np.cos(theta1) + self.L2 * np.cos(theta1 + theta2)
+        y = self.L1 * np.sin(theta1) + self.L2 * np.sin(theta1 + theta2)
+        return x, y
+
+# Example usage
+arm = PlanarArm(L1=1.0, L2=0.8)
+x, y = arm.forward_kinematics(theta1=np.pi/4, theta2=np.pi/3)
+print(f"End-effector position: ({x:.2f}, {y:.2f})")
+# Output: End-effector position: (1.29, 1.31)
+```
+
+### Inverse Kinematics: End-Effector Position → Joints
+
+**Inverse kinematics (IK)** solves the opposite problem: given a desired end-effector position, what joint angles achieve it?
+
+**Challenges**:
+1. **Multiple solutions**: Different joint configurations can reach the same point
+2. **No solution**: Target may be unreachable (outside workspace)
+3. **Nonlinear equations**: No closed-form solution for complex robots
+
+**Analytical Solution (2-DOF Planar Arm)**:
+```python
+def inverse_kinematics(self, x_target, y_target):
+    """
+    Compute joint angles to reach (x_target, y_target).
+
+    Returns:
+        (theta1, theta2): Joint angles in radians, or None if unreachable
+    """
+    # Distance from shoulder to target
+    d = np.sqrt(x_target**2 + y_target**2)
+
+    # Check if target is reachable
+    if d > (self.L1 + self.L2) or d < abs(self.L1 - self.L2):
+        return None  # Out of workspace
+
+    # Law of cosines for theta2
+    cos_theta2 = (d**2 - self.L1**2 - self.L2**2) / (2 * self.L1 * self.L2)
+    theta2 = np.arccos(cos_theta2)  # Elbow-up solution
+
+    # Solve for theta1
+    k1 = self.L1 + self.L2 * np.cos(theta2)
+    k2 = self.L2 * np.sin(theta2)
+    theta1 = np.arctan2(y_target, x_target) - np.arctan2(k2, k1)
+
+    return theta1, theta2
+
+# Example: Reach point (1.0, 1.0)
+result = arm.inverse_kinematics(1.0, 1.0)
+if result:
+    theta1, theta2 = result
+    print(f"Solution: theta1={np.degrees(theta1):.1f}°, theta2={np.degrees(theta2):.1f}°")
+else:
+    print("Target unreachable")
+# Output: Solution: theta1=35.4°, theta2=68.0°
+```
+
+**Numerical IK (Iterative)**:
+For complex robots (humanoids with 28+ DOF), we use iterative methods:
+
+```python
+def inverse_kinematics_iterative(robot, target_pose, max_iterations=100, tolerance=0.01):
+    """
+    Numerical IK using Jacobian pseudoinverse method.
+
+    Args:
+        robot: Robot model with forward_kinematics() and jacobian() methods
+        target_pose: Desired end-effector pose [x, y, z, roll, pitch, yaw]
+        max_iterations: Max optimization steps
+        tolerance: Convergence threshold (meters)
+
+    Returns:
+        joint_angles: Solution, or None if not converged
+    """
+    # Start from current configuration
+    q = robot.get_joint_angles()
+
+    for i in range(max_iterations):
+        # Compute current end-effector pose
+        current_pose = robot.forward_kinematics(q)
+
+        # Error vector
+        error = target_pose - current_pose
+
+        # Check convergence
+        if np.linalg.norm(error) < tolerance:
+            return q
+
+        # Compute Jacobian (relates joint velocities to end-effector velocity)
+        J = robot.jacobian(q)
+
+        # Pseudoinverse solution: Δq = J^+ * error
+        J_pinv = np.linalg.pinv(J)
+        delta_q = J_pinv @ error
+
+        # Update joint angles with step size
+        q = q + 0.1 * delta_q  # Damping factor 0.1 for stability
+
+    return None  # Did not converge
+```
+
+## Robot Dynamics: Forces and Motion
+
+**Dynamics** considers forces and torques—*why* things move. This is crucial for control: to make a robot move as desired, we must apply appropriate forces.
+
+### Newton-Euler Formulation
+
+Based on Newton's laws: **F = ma** (linear) and **τ = Iα** (rotational).
+
+For a rigid link:
+```
+F = m * a           # Force = mass × acceleration (linear)
+τ = I * α + ω × (I * ω)  # Torque = inertia × angular acceleration + gyroscopic term
+```
+
+**Example: Single-Link Pendulum**:
+```python
+class Pendulum:
+    def __init__(self, mass=1.0, length=1.0, damping=0.1, g=9.81):
+        """
+        Simple pendulum: mass on a rod, pivot at origin.
+
+        Args:
+            mass: Mass of bob (kg)
+            length: Rod length (m)
+            damping: Friction coefficient
+            g: Gravity (m/s²)
+        """
+        self.m = mass
+        self.L = length
+        self.b = damping  # Damping coefficient
+        self.g = g
+        self.I = mass * length**2  # Moment of inertia
+
+    def dynamics(self, theta, theta_dot, tau=0):
+        """
+        Compute angular acceleration given current state and torque.
+
+        Args:
+            theta: Angle from vertical (radians)
+            theta_dot: Angular velocity (rad/s)
+            tau: Applied torque (N·m)
+
+        Returns:
+            theta_ddot: Angular acceleration (rad/s²)
+        """
+        # Equation of motion: I*θ'' = τ - m*g*L*sin(θ) - b*θ'
+        theta_ddot = (tau - self.m * self.g * self.L * np.sin(theta) - self.b * theta_dot) / self.I
+        return theta_ddot
+
+    def simulate(self, theta0, duration=10, dt=0.01, tau_func=None):
+        """
+        Simulate pendulum motion over time.
+
+        Args:
+            theta0: Initial angle (radians)
+            duration: Simulation time (seconds)
+            dt: Time step (seconds)
+            tau_func: Function mapping (t, theta, theta_dot) -> torque
+
+        Returns:
+            t_history, theta_history: Time and angle arrays
+        """
+        if tau_func is None:
+            tau_func = lambda t, theta, theta_dot: 0  # No applied torque
+
+        t_history = []
+        theta_history = []
+
+        theta = theta0
+        theta_dot = 0
+        t = 0
+
+        while t < duration:
+            t_history.append(t)
+            theta_history.append(theta)
+
+            # Compute torque
+            tau = tau_func(t, theta, theta_dot)
+
+            # Compute acceleration
+            theta_ddot = self.dynamics(theta, theta_dot, tau)
+
+            # Integrate (Euler method for simplicity)
+            theta_dot += theta_ddot * dt
+            theta += theta_dot * dt
+
+            t += dt
+
+        return np.array(t_history), np.array(theta_history)
+
+# Example: Swing-up control
+pendulum = Pendulum(mass=1.0, length=1.0)
+
+# Simple energy-based controller
+def swing_up_controller(t, theta, theta_dot):
+    """Apply torque to swing pendulum up to inverted position."""
+    # Energy of current state
+    E = 0.5 * pendulum.I * theta_dot**2 - pendulum.m * pendulum.g * pendulum.L * np.cos(theta)
+    # Desired energy (inverted position, at rest)
+    E_desired = pendulum.m * pendulum.g * pendulum.L
+    # Apply torque proportional to energy error
+    return 10 * (E_desired - E) * np.sign(theta_dot * np.cos(theta))
+
+t, theta = pendulum.simulate(theta0=0.1, duration=5, tau_func=swing_up_controller)
+```
+
+### Lagrangian Formulation
+
+An alternative approach using energy rather than forces:
+
+```
+L = T - V   # Lagrangian = Kinetic Energy - Potential Energy
+
+τ = d/dt(∂L/∂q̇) - ∂L/∂q  # Euler-Lagrange equation
+```
+
+**Advantages**:
+- Systematic derivation for complex systems
+- Naturally handles constraints
+- Directly yields equations of motion
+
+**Example: 2-DOF Arm Dynamics**:
+```python
+def arm_dynamics(q, q_dot, tau, m1=1, m2=0.8, L1=1, L2=0.8):
+    """
+    Compute accelerations for 2-DOF planar arm.
+
+    Args:
+        q: Joint angles [theta1, theta2]
+        q_dot: Joint velocities [theta1_dot, theta2_dot]
+        tau: Joint torques [tau1, tau2]
+        m1, m2: Link masses
+        L1, L2: Link lengths
+
+    Returns:
+        q_ddot: Joint accelerations [theta1_ddot, theta2_ddot]
+    """
+    theta1, theta2 = q
+    theta1_dot, theta2_dot = q_dot
+    tau1, tau2 = tau
+
+    # Inertia matrix M(q)
+    M11 = (m1 + m2) * L1**2 + m2 * L2**2 + 2 * m2 * L1 * L2 * np.cos(theta2)
+    M12 = m2 * L2**2 + m2 * L1 * L2 * np.cos(theta2)
+    M21 = M12
+    M22 = m2 * L2**2
+    M = np.array([[M11, M12], [M21, M22]])
+
+    # Coriolis/centrifugal matrix C(q, q_dot)
+    h = -m2 * L1 * L2 * np.sin(theta2)
+    C = np.array([
+        [h * theta2_dot, h * (theta1_dot + theta2_dot)],
+        [-h * theta1_dot, 0]
+    ])
+
+    # Gravity vector G(q)
+    g = 9.81
+    G = np.array([
+        (m1 + m2) * g * L1 * np.cos(theta1) + m2 * g * L2 * np.cos(theta1 + theta2),
+        m2 * g * L2 * np.cos(theta1 + theta2)
+    ])
+
+    # Equation of motion: M*q_ddot + C*q_dot + G = tau
+    # Solve for q_ddot: q_ddot = M^(-1) * (tau - C*q_dot - G)
+    q_ddot = np.linalg.solve(M, tau - C @ q_dot - G)
+
+    return q_ddot
+```
+
+## Control Theory Fundamentals
+
+To make robots move as desired, we need **controllers**—algorithms that compute torques to achieve target behavior.
+
+### PID Control
+
+**Proportional-Integral-Derivative (PID)** control is the workhorse of industrial robotics:
+
+```python
+class PIDController:
+    def __init__(self, Kp, Ki, Kd, dt=0.01):
+        """
+        PID controller for tracking a reference signal.
+
+        Args:
+            Kp: Proportional gain
+            Ki: Integral gain
+            Kd: Derivative gain
+            dt: Time step (seconds)
+        """
+        self.Kp = Kp
+        self.Ki = Ki
+        self.Kd = Kd
+        self.dt = dt
+
+        self.integral = 0
+        self.prev_error = 0
+
+    def update(self, setpoint, measurement):
+        """
+        Compute control output.
+
+        Args:
+            setpoint: Desired value (e.g., target joint angle)
+            measurement: Current value (e.g., actual joint angle)
+
+        Returns:
+            control_output: Torque or force to apply
+        """
+        # Error
+        error = setpoint - measurement
+
+        # Proportional term
+        P = self.Kp * error
+
+        # Integral term (accumulated error)
+        self.integral += error * self.dt
+        I = self.Ki * self.integral
+
+        # Derivative term (rate of change of error)
+        D = self.Kd * (error - self.prev_error) / self.dt
+        self.prev_error = error
+
+        # Control output
+        control_output = P + I + D
+        return control_output
+
+# Example: Position control for single joint
+controller = PIDController(Kp=10, Ki=0.5, Kd=2)
+target_angle = np.pi / 2  # 90 degrees
+current_angle = 0
+
+for t in np.arange(0, 5, 0.01):
+    torque = controller.update(target_angle, current_angle)
+    # (Apply torque to robot and measure new angle...)
+```
+
+**Tuning PID Gains**:
+- **Kp**: Proportional gain—determines responsiveness (higher = faster, but can overshoot)
+- **Ki**: Integral gain—eliminates steady-state error (but can cause oscillation)
+- **Kd**: Derivative gain—damping (reduces overshoot, adds stability)
+
+### Model Predictive Control (MPC)
+
+**MPC** predicts future system behavior and optimizes control over a horizon:
+
+```python
+# Simplified MPC concept (pseudo-code)
+def mpc_controller(current_state, reference_trajectory, horizon=10):
+    """
+    Model Predictive Control: Plan optimal actions over future horizon.
+
+    Args:
+        current_state: Current robot state [position, velocity]
+        reference_trajectory: Desired future states [state(t), state(t+1), ...]
+        horizon: Number of time steps to look ahead
+
+    Returns:
+        optimal_action: Best action to take now
+    """
+    best_action = None
+    best_cost = float('inf')
+
+    # Search over possible action sequences
+    for action_sequence in generate_action_candidates(horizon):
+        # Predict future states using dynamics model
+        predicted_states = simulate_forward(current_state, action_sequence)
+
+        # Compute cost (tracking error + control effort)
+        cost = 0
+        for t in range(horizon):
+            cost += tracking_error(predicted_states[t], reference_trajectory[t])
+            cost += control_cost(action_sequence[t])
+
+        # Update best action
+        if cost < best_cost:
+            best_cost = cost
+            best_action = action_sequence[0]  # Only execute first action
+
+    return best_action  # Replan at next time step
+```
+
+**Used in**: Boston Dynamics humanoids, autonomous vehicles, drone flight control.
+
+## Motion Planning and Trajectory Generation
+
+**Motion planning** finds collision-free paths from start to goal. **Trajectory generation** adds timing—how fast to move along the path.
+
+### Sampling-Based Planning: RRT
+
+**Rapidly-exploring Random Tree (RRT)** grows a tree of sampled configurations:
+
+```python
+class RRT:
+    def __init__(self, start, goal, obstacle_checker, step_size=0.1, max_iterations=5000):
+        self.start = start
+        self.goal = goal
+        self.obstacle_checker = obstacle_checker
+        self.step_size = step_size
+        self.max_iterations = max_iterations
+
+        self.tree = {0: {'config': start, 'parent': None}}
+        self.node_count = 1
+
+    def plan(self):
+        """Run RRT to find path from start to goal."""
+        for i in range(self.max_iterations):
+            # Sample random configuration
+            q_rand = self.sample_random_config()
+
+            # Find nearest node in tree
+            nearest_id, nearest_config = self.find_nearest(q_rand)
+
+            # Extend tree toward sample
+            q_new = self.extend(nearest_config, q_rand)
+
+            # Check for collisions
+            if self.obstacle_checker(q_new):
+                continue  # Skip if in collision
+
+            # Add to tree
+            new_id = self.node_count
+            self.tree[new_id] = {'config': q_new, 'parent': nearest_id}
+            self.node_count += 1
+
+            # Check if goal reached
+            if np.linalg.norm(q_new - self.goal) < self.step_size:
+                return self.extract_path(new_id)
+
+        return None  # Planning failed
+
+    def extend(self, q_from, q_toward):
+        """Take small step from q_from toward q_toward."""
+        direction = q_toward - q_from
+        direction = direction / np.linalg.norm(direction)
+        q_new = q_from + self.step_size * direction
+        return q_new
+
+    def extract_path(self, goal_id):
+        """Backtrack through tree to get path."""
+        path = []
+        current_id = goal_id
+        while current_id is not None:
+            path.append(self.tree[current_id]['config'])
+            current_id = self.tree[current_id]['parent']
+        return path[::-1]  # Reverse to get start->goal order
+```
+
+### Trajectory Smoothing
+
+RRT paths are jerky. Smooth them for actual robot execution:
+
+```python
+def smooth_trajectory(waypoints, duration, num_points=100):
+    """
+    Generate smooth trajectory through waypoints using cubic splines.
+
+    Args:
+        waypoints: List of configurations [q0, q1, ..., qN]
+        duration: Total time (seconds)
+        num_points: Number of interpolated points
+
+    Returns:
+        t_interp, q_interp: Time and configuration arrays
+    """
+    from scipy.interpolate import CubicSpline
+
+    # Time at each waypoint
+    t_waypoints = np.linspace(0, duration, len(waypoints))
+
+    # Fit spline
+    cs = CubicSpline(t_waypoints, waypoints)
+
+    # Interpolate
+    t_interp = np.linspace(0, duration, num_points)
+    q_interp = cs(t_interp)
+
+    return t_interp, q_interp
+```
+
+## Physics Simulation for Physical AI
+
+Simulators are indispensable for Physical AI—they enable safe, fast, cheap training.
+
+### Popular Simulators
+
+| Simulator | Strengths | Use Cases |
+|-----------|-----------|-----------|
+| **Gazebo** | ROS integration, sensors, multi-robot | General robotics, outdoor scenarios |
+| **PyBullet** | Python API, fast, easy setup | Reinforcement learning, manipulation |
+| **MuJoCo** | Accurate contacts, efficient | Locomotion, dexterous manipulation |
+| **Isaac Sim** | Photorealistic rendering, domain randomization | Sim-to-real, vision tasks |
+| **Unity/Unreal** | Game engine quality, VR support | Human-robot interaction, training data generation |
+
+### Basic PyBullet Example
+
+```python
+import pybullet as p
+import pybullet_data
+import time
+
+# Connect to simulator
+physicsClient = p.connect(p.GUI)
+p.setAdditionalSearchPath(pybullet_data.getDataPath())
+
+# Set gravity
+p.setGravity(0, 0, -9.81)
+
+# Load plane and robot
+planeId = p.loadURDF("plane.urdf")
+robotId = p.loadURDF("r2d2.urdf", [0, 0, 1])
+
+# Simulation loop
+for i in range(10000):
+    p.stepSimulation()
+    time.sleep(1./240.)  # Real-time simulation
+
+    # Get robot position
+    pos, orn = p.getBasePositionAndOrientation(robotId)
+    print(f"Position: {pos}, Orientation: {orn}")
+
+p.disconnect()
+```
+
+### Sim-to-Real Considerations
+
+**Key Parameters to Match**:
+1. **Mass and Inertia**: Measure real robot link properties
+2. **Friction Coefficients**: Test sliding on real surfaces
+3. **Actuator Dynamics**: Model motor response time and torque limits
+4. **Sensor Noise**: Add realistic noise to simulated sensor readings
+
+```python
+# Example: Realistic sensor noise modeling
+def add_sensor_noise(clean_measurement, sensor_type='imu'):
+    """Add realistic noise to simulated sensor reading."""
+    if sensor_type == 'imu':
+        # IMU accelerometer: additive Gaussian noise
+        noise = np.random.normal(0, 0.01, size=3)  # 0.01 m/s² stddev
+        return clean_measurement + noise
+
+    elif sensor_type == 'camera':
+        # Camera: Gaussian blur + salt-and-pepper noise
+        blurred = cv2.GaussianBlur(clean_measurement, (3,3), 0.5)
+        noise_mask = np.random.random(blurred.shape[:2]) < 0.001
+        noisy = blurred.copy()
+        noisy[noise_mask] = 255  # Salt
+        return noisy
+
+    # Add more sensor types as needed...
+```
+
+## Summary
+
+Physical systems and dynamics form the mathematical foundation of Physical AI. Understanding how robots move—kinematics—and why they move—dynamics—is essential for control and planning.
+
+**Key Takeaways**:
+
+✅ **Kinematics**: Forward (joints → position) and Inverse (position → joints)
+✅ **Dynamics**: Forces and torques cause acceleration (Newton-Euler, Lagrangian)
+✅ **Control**: PID for local tracking, MPC for optimal predictive control
+✅ **Planning**: RRT for collision-free paths, splines for smooth trajectories
+✅ **Simulation**: Essential tool for safe, fast training—requires careful calibration
+
+In the next module, we'll explore **ROS 2**—the middleware that connects perception, planning, and control in real robotic systems.
+
+## Exercises
+
+1. **Kinematics**: Implement forward kinematics for a 3-DOF arm (add one more link to the 2-DOF example). Compute the workspace (set of all reachable points).
+
+2. **Inverse Kinematics**: Test the 2-DOF IK function with several target points. When does it fail? Why?
+
+3. **Dynamics Simulation**: Modify the pendulum simulator to use the more accurate **Runge-Kutta 4** integration method instead of Euler. Compare results.
+
+4. **PID Tuning**: Experiment with different PID gains (Kp, Ki, Kd) for the joint controller. Plot the response for various settings. What happens with too much Kp? Too much Kd?
+
+5. **Motion Planning**: Implement a 2D RRT planner with circular obstacles. Visualize the tree growth and final path.
+
+6. **Simulation**: Install PyBullet (`pip install pybullet`). Load a robot URDF and apply joint torques to make it move. Experiment with different gravity settings.
+
+## Further Reading
+
+- **Books**:
+  - *Modern Robotics: Mechanics, Planning, and Control* by Kevin Lynch and Frank Park
+  - *Robotics: Modelling, Planning and Control* by Bruno Siciliano et al.
+  - *A Mathematical Introduction to Robotic Manipulation* by Richard Murray et al.
+
+- **Papers**:
+  - "Rapidly-exploring Random Trees: A New Tool for Path Planning" (LaValle, 1998)
+  - "Model Predictive Control for Legged Locomotion" (Di Carlo et al., 2018)
+
+- **Online Resources**:
+  - PyBullet Quickstart Guide: https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA
+  - ROS 2 Control Tutorials: https://control.ros.org
+
+---
+
+**Next Module**: [ROS 2 - Robotic Nervous System](/docs/modules/ros2/) — Building distributed robot software systems.

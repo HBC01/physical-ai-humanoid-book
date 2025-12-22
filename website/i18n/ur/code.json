@@ -1,0 +1,10 @@
+{
+  "theme.ErrorPageContent.title": {
+    "message": "یہ صفحہ کریش ہو گیا۔",
+    "description": "The title of the fallback page when the page crashed"
+  },
+  "theme.NotFound.title": {
+    "message": "صفحہ نہیں ملا",
+    "description": "The title of the 404 page"
+  }
+}

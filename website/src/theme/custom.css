@@ -1,0 +1,111 @@
+/**
+ * Custom theme for Physical AI & Humanoid Robotics Textbook
+ * Extends Docusaurus default theme with educational-focused styling
+ */
+
+:root {
+  /* Primary brand colors */
+  --ifm-color-primary: #2e8555;
+  --ifm-color-primary-dark: #29784c;
+  --ifm-color-primary-darker: #277148;
+  --ifm-color-primary-darkest: #205d3b;
+  --ifm-color-primary-light: #33925d;
+  --ifm-color-primary-lighter: #359962;
+  --ifm-color-primary-lightest: #3cad6e;
+
+  /* Code block styling */
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+
+  /* Font settings for readability */
+  --ifm-font-size-base: 17px;
+  --ifm-line-height-base: 1.7;
+  --ifm-heading-font-weight: 600;
+}
+
+/* Dark mode adjustments */
+[data-theme='dark'] {
+  --ifm-color-primary: #25c2a0;
+  --ifm-color-primary-dark: #21af90;
+  --ifm-color-primary-darker: #1fa588;
+  --ifm-color-primary-darkest: #1a8870;
+  --ifm-color-primary-light: #29d5b0;
+  --ifm-color-primary-lighter: #32d8b4;
+  --ifm-color-primary-lightest: #4fddbf;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* Educational content enhancements */
+.markdown > h2 {
+  margin-top: 2rem;
+  border-bottom: 2px solid var(--ifm-color-primary-lightest);
+  padding-bottom: 0.5rem;
+}
+
+/* Learning objectives callout */
+.learning-objectives {
+  background-color: var(--ifm-color-primary-lightest);
+  border-left: 4px solid var(--ifm-color-primary);
+  padding: 1rem;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+}
+
+/* Exercise blocks */
+.exercise-block {
+  background-color: rgba(46, 133, 85, 0.1);
+  border-left: 4px solid var(--ifm-color-primary-dark);
+  padding: 1rem;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+}
+
+/* Code examples with enhanced visibility */
+.code-example {
+  margin: 1.5rem 0;
+}
+
+.code-example-title {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  color: var(--ifm-color-primary-dark);
+}
+
+/* RTL support for Urdu */
+html[dir='rtl'] {
+  text-align: right;
+}
+
+html[dir='rtl'] .navbar__items {
+  flex-direction: row-reverse;
+}
+
+/* Accessibility improvements */
+.skip-to-content {
+  position: absolute;
+  left: -999px;
+  width: 1px;
+  height: 1px;
+  top: auto;
+}
+
+.skip-to-content:focus {
+  left: 0;
+  width: auto;
+  height: auto;
+  background-color: var(--ifm-color-primary);
+  color: white;
+  padding: 1rem;
+  z-index: 999;
+}
+
+/* Progress indicators (for future progress tracking) */
+.chapter-complete {
+  color: var(--ifm-color-success);
+  margin-left: 0.5rem;
+}
+
+.chapter-in-progress {
+  color: var(--ifm-color-warning);
+  margin-left: 0.5rem;
+}
