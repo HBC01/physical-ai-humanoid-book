@@ -1,0 +1,136 @@
+---
+title: "Exercise 8: Full System Integration"
+sidebar_label: "Ex 8: Capstone Integration"
+---
+
+# Exercise 8: Integrated Humanoid Robot System
+
+## Architecture
+
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│   Camera    │────▶│  Perception  │────▶│   Planner   │
+│   (Vision)  │     │  (VLA Model) │     │  (Actions)  │
+└─────────────┘     └──────────────┘     └─────────────┘
+                                                │
+┌─────────────┐     ┌──────────────┐           │
+│  Microphone │────▶│   Speech     │───────────┘
+│   (Audio)   │     │  Recognition │
+└─────────────┘     └──────────────┘
+                                                │
+                                                ▼
+                    ┌──────────────┐     ┌─────────────┐
+                    │  Controller  │────▶│   Motors    │
+                    │  (ROS 2)     │     │ (Hardware)  │
+                    └──────────────┘     └─────────────┘
+```
+
+## System Components
+
+### 1. Perception Pipeline
+```python
+class PerceptionNode(Node):
+    def __init__(self):
+        super().__init__('perception_node')
+
+        # Vision
+        self.image_sub = self.create_subscription(
+            Image, '/camera/image', self.image_callback, 10)
+
+        # Object detection
+        self.object_pub = self.create_publisher(
+            DetectionArray, '/objects', 10)
+
+        # VLA model
+        self.vla_model = load_vla_model()
+
+    def image_callback(self, msg):
+        # Process image with VLA
+        objects = self.vla_model.detect(msg)
+        self.object_pub.publish(objects)
+```
+
+### 2. Planning Node
+```python
+class PlanningNode(Node):
+    def __init__(self):
+        super().__init__('planning_node')
+
+        # Inputs
+        self.object_sub = self.create_subscription(
+            DetectionArray, '/objects', self.object_callback, 10)
+
+        self.voice_sub = self.create_subscription(
+            String, '/voice_commands', self.voice_callback, 10)
+
+        # Output
+        self.action_client = ActionClient(self, Navigate, 'navigate')
+
+    def voice_callback(self, msg):
+        if 'go to' in msg.data:
+            # Extract location and send navigation goal
+            location = self.parse_location(msg.data)
+            self.send_navigation_goal(location)
+```
+
+### 3. Control Node
+```python
+class ControlNode(Node):
+    def __init__(self):
+        super().__init__('control_node')
+
+        # Motion commands
+        self.cmd_vel_pub = self.create_publisher(
+            Twist, '/cmd_vel', 10)
+
+        # Joint control
+        self.joint_pub = self.create_publisher(
+            JointState, '/joint_commands', 10)
+```
+
+## Launch All Nodes
+
+```python
+# launch/full_system.launch.py
+from launch import LaunchDescription
+from launch_ros.actions import Node
+
+def generate_launch_description():
+    return LaunchDescription([
+        Node(package='perception', executable='perception_node'),
+        Node(package='planning', executable='planning_node'),
+        Node(package='control', executable='control_node'),
+        Node(package='speech', executable='speech_node'),
+    ])
+```
+
+## Run Complete System
+
+```bash
+# Terminal 1: Simulation
+ros2 launch isaac_sim warehouse.launch.py
+
+# Terminal 2: Full system
+ros2 launch capstone full_system.launch.py
+
+# Terminal 3: Test commands
+ros2 topic pub /voice_commands std_msgs/msg/String "{data: 'go to the kitchen'}"
+```
+
+## Expected Behavior
+1. Robot receives voice command
+2. Vision system identifies path
+3. Planner generates trajectory
+4. Controller executes motion
+5. Robot navigates to destination
+
+## Performance Metrics
+- Latency: < 100ms per pipeline
+- Success rate: > 90% for known commands
+- Navigation accuracy: ± 10cm
+
+## Challenges
+1. Add obstacle avoidance
+2. Implement task prioritization
+3. Handle multi-step instructions
+4. Add failure recovery behaviors

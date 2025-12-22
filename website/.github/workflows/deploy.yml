@@ -36,6 +36,11 @@ jobs:
           cd website
           npm ci
 
+      - name: Lint code
+        run: |
+          cd website
+          npm run lint || true
+
       - name: Build website
         run: |
           cd website

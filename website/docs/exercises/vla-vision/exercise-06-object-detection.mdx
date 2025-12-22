@@ -1,0 +1,76 @@
+---
+title: "Exercise 6: VLA Object Detection"
+sidebar_label: "Ex 6: Object Detection"
+---
+
+# Exercise 6: Vision-Language-Action Object Detection
+
+## Setup
+
+```bash
+pip install opencv-python transformers torch
+```
+
+## Object Detection with YOLO
+
+```python
+import cv2
+from ultralytics import YOLO
+
+# Load model
+model = YOLO('yolov8n.pt')  # Nano model for speed
+
+# Open camera
+cap = cv2.VideoCapture(0)
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    # Run detection
+    results = model(frame)
+
+    # Visualize
+    annotated_frame = results[0].plot()
+    cv2.imshow('YOLOv8 Detection', annotated_frame)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
+```
+
+## Language Grounding
+
+```python
+from transformers import CLIPProcessor, CLIPModel
+
+model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+
+# Match image with text descriptions
+inputs = processor(
+    text=["a red apple", "a banana", "a cup"],
+    images=image,
+    return_tensors="pt",
+    padding=True
+)
+
+outputs = model(**inputs)
+logits = outputs.logits_per_image
+probs = logits.softmax(dim=1)
+
+print(f"Detected: {labels[probs.argmax()]}")
+```
+
+## Expected Results
+- Real-time object detection at 30 FPS
+- Bounding boxes around detected objects
+- Confidence scores for each detection
+
+## Challenges
+1. Implement custom object classes
+2. Combine detection with robot grasping
+3. Add natural language queries

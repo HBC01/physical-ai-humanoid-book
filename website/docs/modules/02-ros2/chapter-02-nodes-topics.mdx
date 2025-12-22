@@ -14,30 +14,644 @@ By the end of this chapter, you will be able to:
 - Create custom message types for specialized applications
 - Debug topic communication issues effectively
 - Optimize node design for performance and reliability
+- Implement lifecycle management for production-ready nodes
 
 ## Introduction
 
-This chapter explores advanced ROS 2 communication concepts, building on the fundamentals from Chapter 1. We'll dive deep into topics, messages, and Quality of Service—the core mechanisms that enable robust robot software.
+In Chapter 1, we introduced the fundamental concepts of nodes and topics. This chapter dives deep into the practical aspects of building robust ROS 2 applications. We'll explore Quality of Service configurations, custom messages, debugging techniques, and best practices for node architecture.
 
 ## Quality of Service (QoS) Profiles
 
-ROS 2 uses DDS (Data Distribution Service) which supports configurable QoS settings...
+One of ROS 2's most powerful features is its configurable Quality of Service (QoS) system, inherited from the DDS middleware. QoS settings determine how messages are delivered, stored, and managed across the network.
+
+### Why QoS Matters
+
+Different types of data have different requirements:
+
+- **Sensor data** (camera images, LIDAR scans): High-frequency, best-effort delivery
+- **Robot commands** (motor velocities): Must arrive reliably, but latest value matters most
+- **Configuration data** (map, calibration): Must be delivered reliably, even to late-joining subscribers
+- **Diagnostic logs**: Must be stored for debugging, even if no subscribers exist
+
+QoS profiles let you configure these behaviors per-topic.
+
+### Core QoS Parameters
+
+#### 1. Reliability
+
+**Best Effort**:
+- Messages may be dropped if network is congested
+- Lower latency, lower overhead
+- **Use for**: High-frequency sensor data (camera at 30 FPS)
+
+**Reliable**:
+- Guarantees delivery (retransmits if needed)
+- Higher latency, more overhead
+- **Use for**: Commands, configuration, important state updates
+
+```python
+from rclpy.qos import QoSProfile, ReliabilityPolicy
+
+# Best effort for sensor data
+sensor_qos = QoSProfile(
+    reliability=ReliabilityPolicy.BEST_EFFORT,
+    depth=10
+)
+
+# Reliable for commands
+command_qos = QoSProfile(
+    reliability=ReliabilityPolicy.RELIABLE,
+    depth=10
+)
+```
+
+#### 2. Durability
+
+**Volatile**:
+- Messages are discarded if no subscribers exist
+- **Use for**: Real-time data that becomes stale quickly
+
+**Transient Local**:
+- Last N messages are stored for late-joining subscribers
+- **Use for**: Configuration, maps, calibration data
+
+```python
+from rclpy.qos import DurabilityPolicy
+
+# Configuration that late joiners need
+config_qos = QoSProfile(
+    reliability=ReliabilityPolicy.RELIABLE,
+    durability=DurabilityPolicy.TRANSIENT_LOCAL,
+    depth=10  # Keep last 10 messages
+)
+```
+
+**Example Use Case**: A robot publishes its map to `/map` topic with TRANSIENT_LOCAL durability. When a new visualization node starts 5 seconds later, it immediately receives the latest map without waiting for republication.
+
+#### 3. History
+
+**Keep Last**:
+- Stores last N messages in queue
+- **Use for**: Most applications (efficient memory usage)
+
+**Keep All**:
+- Stores all messages until delivered
+- **Use for**: Critical data that must never be lost
+
+```python
+from rclpy.qos import HistoryPolicy
+
+# Keep last 10 sensor readings
+sensor_qos = QoSProfile(
+    history=HistoryPolicy.KEEP_LAST,
+    depth=10  # Queue size
+)
+
+# Keep all commands until processed
+command_qos = QoSProfile(
+    history=HistoryPolicy.KEEP_ALL,
+    depth=100  # Max queue size before blocking
+)
+```
+
+#### 4. Lifespan
+
+Controls how long messages remain valid:
+
+```python
+from rclpy.duration import Duration
+
+# Camera images expire after 100ms
+camera_qos = QoSProfile(
+    reliability=ReliabilityPolicy.BEST_EFFORT,
+    depth=5,
+    lifespan=Duration(seconds=0, nanoseconds=100_000_000)
+)
+```
+
+### Pre-Defined QoS Profiles
+
+ROS 2 provides standard profiles for common scenarios:
+
+```python
+from rclpy.qos import (
+    qos_profile_sensor_data,      # Best effort, volatile
+    qos_profile_system_default,   # Reliable, volatile
+    qos_profile_services_default, # Reliable, volatile (for services)
+    qos_profile_parameters,       # Reliable, volatile (for parameters)
+)
+
+# Use predefined profile
+self.create_subscription(
+    Image,
+    '/camera/image_raw',
+    self.image_callback,
+    qos_profile_sensor_data  # Optimized for sensors
+)
+```
+
+### QoS Compatibility
+
+Publishers and subscribers must have **compatible** QoS settings to communicate:
+
+| Publisher | Subscriber | Compatible? |
+|-----------|------------|-------------|
+| BEST_EFFORT | BEST_EFFORT | ✅ Yes |
+| RELIABLE | RELIABLE | ✅ Yes |
+| BEST_EFFORT | RELIABLE | ❌ No |
+| RELIABLE | BEST_EFFORT | ✅ Yes (subscriber accepts lower guarantee) |
+
+**Debugging Tip**: If topics aren't communicating, check QoS compatibility with:
+```bash
+ros2 topic info /my_topic --verbose
+```
+
+## Creating Custom Messages
+
+While ROS 2 provides standard messages (`sensor_msgs`, `geometry_msgs`, etc.), you'll often need custom types for domain-specific data.
+
+### Message Definition Syntax
+
+Create a new package for your messages:
+
+```bash
+ros2 pkg create --build-type ament_cmake my_robot_msgs
+```
+
+Define a message in `msg/RobotState.msg`:
+
+```
+# RobotState.msg - Custom message for robot status
+
+# Header with timestamp and frame info
+std_msgs/Header header
+
+# Robot identification
+string robot_id
+uint8 robot_type
+uint8 ROBOT_TYPE_WHEELED = 0
+uint8 ROBOT_TYPE_HUMANOID = 1
+uint8 ROBOT_TYPE_QUADRUPED = 2
+
+# State information
+geometry_msgs/Pose pose           # Current position and orientation
+geometry_msgs/Twist velocity      # Current velocities
+float32 battery_percentage        # Battery level (0.0 to 100.0)
+bool is_emergency_stopped         # E-stop status
+string[] active_faults            # List of active fault codes
+
+# Sensor health
+SensorHealth[] sensor_status      # Array of sensor health messages
+```
+
+### Nested Custom Messages
+
+Define `msg/SensorHealth.msg`:
+
+```
+# SensorHealth.msg - Status of individual sensors
+
+string sensor_name
+uint8 status
+uint8 STATUS_OK = 0
+uint8 STATUS_WARNING = 1
+uint8 STATUS_ERROR = 2
+uint8 STATUS_OFFLINE = 3
+
+string last_error_message
+builtin_interfaces/Time last_update_time
+```
+
+### Building Custom Messages
+
+Update `CMakeLists.txt`:
+
+```cmake
+find_package(rosidl_default_generators REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/RobotState.msg"
+  "msg/SensorHealth.msg"
+  DEPENDENCIES std_msgs geometry_msgs
+)
+```
+
+Update `package.xml`:
+
+```xml
+<build_depend>rosidl_default_generators</build_depend>
+<exec_depend>rosidl_default_runtime</exec_depend>
+<member_of_group>rosidl_interface_packages</member_of_group>
+
+<depend>std_msgs</depend>
+<depend>geometry_msgs</depend>
+```
+
+Build:
+
+```bash
+colcon build --packages-select my_robot_msgs
+source install/setup.bash
+```
+
+### Using Custom Messages in Python
+
+```python
+import rclpy
+from rclpy.node import Node
+from my_robot_msgs.msg import RobotState, SensorHealth
+from geometry_msgs.msg import Pose, Twist
+
+class RobotStatePublisher(Node):
+    def __init__(self):
+        super().__init__('robot_state_publisher')
+
+        self.publisher = self.create_publisher(
+            RobotState,
+            '/robot_state',
+            10
+        )
+
+        self.timer = self.create_timer(0.1, self.publish_state)  # 10 Hz
+
+    def publish_state(self):
+        msg = RobotState()
+
+        # Fill header
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = 'base_link'
+
+        # Robot identification
+        msg.robot_id = 'robot_01'
+        msg.robot_type = RobotState.ROBOT_TYPE_HUMANOID
+
+        # State data (would come from actual sensors)
+        msg.pose = Pose()  # Would populate from localization
+        msg.velocity = Twist()  # Would populate from odometry
+        msg.battery_percentage = 87.5
+        msg.is_emergency_stopped = False
+        msg.active_faults = []  # No faults
+
+        # Sensor health
+        camera_health = SensorHealth()
+        camera_health.sensor_name = 'front_camera'
+        camera_health.status = SensorHealth.STATUS_OK
+        camera_health.last_update_time = self.get_clock().now().to_msg()
+
+        msg.sensor_status = [camera_health]
+
+        self.publisher.publish(msg)
+        self.get_logger().info(f'Published state for {msg.robot_id}')
+
+def main():
+    rclpy.init()
+    node = RobotStatePublisher()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+```
+
+## Node Lifecycle Management
+
+For production systems, ROS 2 provides **managed nodes** with explicit lifecycle states.
+
+### Lifecycle States
+
+```
+┌─────────┐
+│ Unconfigured │ ◄─────────────┐
+└─────────┘                    │
+    │ configure()              │
+    ▼                          │ cleanup()
+┌─────────┐                    │
+│  Inactive   │ ◄───────────────┤
+└─────────┘                    │
+    │ activate()               │
+    ▼                          │ deactivate()
+┌─────────┐                    │
+│   Active    │ ────────────────┘
+└─────────┘
+    │ shutdown()
+    ▼
+┌─────────┐
+│ Finalized │
+└─────────┘
+```
+
+### Why Use Lifecycle Nodes?
+
+- **Controlled Startup**: Initialize hardware/resources step-by-step
+- **Graceful Shutdown**: Clean up resources properly
+- **Runtime Reconfiguration**: Change parameters without restart
+- **Fault Recovery**: Transition to safe state on errors
+
+### Implementing a Lifecycle Node
+
+```python
+from rclpy.lifecycle import Node, State, TransitionCallbackReturn
+from lifecycle_msgs.srv import ChangeState, GetState
+
+class CameraDriverNode(Node):
+    def __init__(self, node_name):
+        super().__init__(node_name)
+        self.camera_handle = None
+
+    def on_configure(self, state: State) -> TransitionCallbackReturn:
+        """Configure hardware and parameters"""
+        self.get_logger().info('Configuring camera driver...')
+
+        # Declare parameters
+        self.declare_parameter('device_id', 0)
+        self.declare_parameter('frame_rate', 30)
+
+        # Initialize (but don't start) camera
+        try:
+            device_id = self.get_parameter('device_id').value
+            self.camera_handle = self.initialize_camera(device_id)
+            self.get_logger().info('Camera configured successfully')
+            return TransitionCallbackReturn.SUCCESS
+        except Exception as e:
+            self.get_logger().error(f'Configuration failed: {e}')
+            return TransitionCallbackReturn.FAILURE
+
+    def on_activate(self, state: State) -> TransitionCallbackReturn:
+        """Start publishing data"""
+        self.get_logger().info('Activating camera driver...')
+
+        try:
+            self.start_capture()
+            self.publisher = self.create_publisher(Image, '/camera/image', 10)
+            self.timer = self.create_timer(1.0/30, self.capture_and_publish)
+            return TransitionCallbackReturn.SUCCESS
+        except Exception as e:
+            self.get_logger().error(f'Activation failed: {e}')
+            return TransitionCallbackReturn.FAILURE
+
+    def on_deactivate(self, state: State) -> TransitionCallbackReturn:
+        """Stop publishing but keep resources"""
+        self.get_logger().info('Deactivating camera driver...')
+
+        self.destroy_timer(self.timer)
+        self.destroy_publisher(self.publisher)
+        self.stop_capture()
+
+        return TransitionCallbackReturn.SUCCESS
+
+    def on_cleanup(self, state: State) -> TransitionCallbackReturn:
+        """Release all resources"""
+        self.get_logger().info('Cleaning up camera driver...')
+
+        if self.camera_handle:
+            self.release_camera(self.camera_handle)
+            self.camera_handle = None
+
+        return TransitionCallbackReturn.SUCCESS
+
+    def on_shutdown(self, state: State) -> TransitionCallbackReturn:
+        """Final shutdown from any state"""
+        self.get_logger().info('Shutting down camera driver...')
+
+        # Ensure cleanup regardless of current state
+        if self.camera_handle:
+            self.release_camera(self.camera_handle)
+
+        return TransitionCallbackReturn.SUCCESS
+```
+
+### Controlling Lifecycle Nodes
+
+```bash
+# Check current state
+ros2 lifecycle get /camera_driver
+
+# Transition through states
+ros2 lifecycle set /camera_driver configure
+ros2 lifecycle set /camera_driver activate
+
+# Deactivate (pause) without losing resources
+ros2 lifecycle set /camera_driver deactivate
+
+# Reconfigure
+ros2 lifecycle set /camera_driver cleanup
+ros2 param set /camera_driver frame_rate 60
+ros2 lifecycle set /camera_driver configure
+ros2 lifecycle set /camera_driver activate
+```
+
+## Debugging Topic Communication
+
+### Essential CLI Tools
+
+**1. List all topics:**
+```bash
+ros2 topic list
+ros2 topic list -t  # Show message types
+```
+
+**2. Inspect topic details:**
+```bash
+ros2 topic info /camera/image_raw --verbose
+# Shows: publishers, subscribers, QoS settings
+```
+
+**3. Monitor message rate:**
+```bash
+ros2 topic hz /camera/image_raw
+# Output: average rate: 29.8 Hz
+```
+
+**4. Echo messages:**
+```bash
+ros2 topic echo /camera/image_raw
+ros2 topic echo /camera/image_raw --once  # Show one message
+ros2 topic echo /camera/image_raw --field data  # Show specific field
+```
+
+**5. Publish test messages:**
+```bash
+ros2 topic pub /cmd_vel geometry_msgs/msg/Twist \
+  "{linear: {x: 0.5}, angular: {z: 0.0}}"
+```
+
+**6. Record and playback:**
+```bash
+# Record topics
+ros2 bag record /camera/image_raw /odom -o my_test_run
+
+# Playback
+ros2 bag play my_test_run
+```
+
+### Common Issues and Solutions
+
+**Issue 1: Topics not communicating**
+```bash
+# Check if nodes are running
+ros2 node list
+
+# Check topic connections
+ros2 topic info /my_topic --verbose
+
+# Verify QoS compatibility (reliability, durability must match)
+```
+
+**Issue 2: Slow message delivery**
+- Check `ros2 topic hz` - is publisher rate too high?
+- Increase QoS depth (queue size)
+- Use BEST_EFFORT instead of RELIABLE for sensor data
+
+**Issue 3: Messages being dropped**
+- Subscriber processing too slow (blocks queue)
+- Solution: Increase depth, process async, or use executors
+
+## Performance Optimization
+
+### 1. Use Appropriate Data Types
+
+```python
+# ❌ Bad: Sending full image at 30 Hz over WiFi
+self.pub.publish(full_resolution_image)  # 1920x1080, 6MB/frame
+
+# ✅ Good: Compress or downsample
+compressed_image = self.compress_image(image, quality=80)
+self.pub.publish(compressed_image)  # ~300KB/frame
+```
+
+### 2. Tune QoS Depth
+
+```python
+# ❌ Bad: Depth=1 causes drops if processing is slow
+self.create_subscription(Image, '/camera', callback, 1)
+
+# ✅ Good: Buffer allows bursts
+self.create_subscription(Image, '/camera', callback, 10)
+```
+
+### 3. Use MultiThreadedExecutor
+
+```python
+# ❌ Bad: Single-threaded, blocks on slow callbacks
+rclpy.spin(node)
+
+# ✅ Good: Parallel callback execution
+from rclpy.executors import MultiThreadedExecutor
+executor = MultiThreadedExecutor()
+executor.add_node(node)
+executor.spin()
+```
+
+### 4. Leverage Intra-Process Communication
+
+When nodes run in the same process, use zero-copy shared memory:
+
+```python
+# Compose nodes into single process
+from rclpy.executors import SingleThreadedExecutor
+
+executor = SingleThreadedExecutor()
+executor.add_node(camera_node)
+executor.add_node(detector_node)  # Shares memory with camera_node
+executor.spin()
+```
+
+## Best Practices for Node Design
+
+### 1. Single Responsibility
+
+```python
+# ❌ Bad: Monolithic node
+class RobotControllerNode:
+    # Does perception, planning, AND control
+    pass
+
+# ✅ Good: Separate concerns
+class PerceptionNode: ...
+class PlanningNode: ...
+class ControlNode: ...
+```
+
+### 2. Parameterize Configuration
+
+```python
+def __init__(self):
+    super().__init__('my_node')
+
+    # Declare parameters with defaults
+    self.declare_parameter('update_rate', 10.0)
+    self.declare_parameter('safety_distance', 0.5)
+
+    # Read parameters
+    rate = self.get_parameter('update_rate').value
+    self.timer = self.create_timer(1.0/rate, self.update)
+```
+
+Launch with custom parameters:
+```bash
+ros2 run my_pkg my_node --ros-args -p update_rate:=20.0
+```
+
+### 3. Use Namespaces for Multi-Robot
+
+```bash
+# Robot 1
+ros2 run my_pkg controller --ros-args -r __ns:=/robot1
+
+# Robot 2
+ros2 run my_pkg controller --ros-args -r __ns:=/robot2
+
+# Topics: /robot1/cmd_vel, /robot2/cmd_vel
+```
+
+### 4. Implement Proper Logging
+
+```python
+# Use appropriate log levels
+self.get_logger().debug('Detailed debug info')
+self.get_logger().info('Normal operation')
+self.get_logger().warn('Something unexpected')
+self.get_logger().error('Recoverable error')
+self.get_logger().fatal('Unrecoverable error')
+```
+
+View logs:
+```bash
+ros2 run my_pkg my_node --ros-args --log-level DEBUG
+```
+
+## Summary
+
+This chapter covered advanced ROS 2 communication concepts:
+
+✅ **QoS Profiles**: Configure reliability, durability, history, lifespan per-topic
+✅ **Custom Messages**: Define domain-specific data structures
+✅ **Lifecycle Management**: Controlled startup, shutdown, and reconfiguration
+✅ **Debugging Tools**: CLI tools for introspection and troubleshooting
+✅ **Performance**: Optimization techniques for real-time systems
+✅ **Best Practices**: Node design patterns for maintainable code
+
+You now have the tools to build robust, production-ready ROS 2 nodes. In the next chapter, we'll explore services and actions for request-response and goal-oriented communication.
+
+## Exercises
+
+1. **QoS Experiment**: Create two nodes—one publishes with BEST_EFFORT, another subscribes with RELIABLE. What happens? Now reverse it.
+
+2. **Custom Message**: Design a custom message for a delivery robot that includes: robot ID, current location, delivery status, battery level, and ETA.
+
+3. **Lifecycle Node**: Convert a simple publisher node to use lifecycle management. Test configuration, activation, and deactivation.
+
+4. **Performance Analysis**: Record a topic at 100 Hz. Measure bandwidth usage with different QoS depths (1, 10, 100). Plot results.
+
+5. **Debugging Challenge**: Set up two nodes with incompatible QoS. Use `ros2 topic info` to diagnose the issue. Fix it.
+
+## Further Reading
+
+- **DDS Specification**: [OMG DDS Standard](https://www.omg.org/spec/DDS/)
+- **ROS 2 QoS Guide**: [About Quality of Service](https://docs.ros.org/en/humble/Concepts/About-Quality-of-Service-Settings.html)
+- **Lifecycle Nodes**: [Managed Nodes](https://design.ros2.org/articles/node_lifecycle.html)
+- **Performance Tuning**: [ROS 2 Performance Best Practices](https://docs.ros.org/en/humble/How-To-Guides/DDS-tuning.html)
 
 ---
 
-## 📝 Content Status
-
-**This chapter is currently a placeholder.** Complete educational content has been prepared and will be added incrementally. The full chapter will cover:
-
-- Advanced node lifecycle management
-- QoS profiles in detail (reliability, durability, history, lifespan)
-- Custom message type creation
-- Topic introspection and debugging
-- Performance optimization techniques
-- Real-world examples and code samples (2000-4000 words)
-
----
-
-## Next Steps
-
-Continue to [Chapter 3: Services and Actions](/docs/modules/ros2/chapter-03-services-actions) or return to [Module 2 Overview](/docs/modules/ros2/).
+**Next Chapter**: [Services and Actions](/docs/modules/02-ros2/chapter-03-services-actions) — Learn request-response and goal-oriented communication patterns.

@@ -1,0 +1,51 @@
+---
+title: "Exercise 5: NVIDIA Isaac Sim Navigation"
+sidebar_label: "Ex 5: Isaac Navigation"
+---
+
+# Exercise 5: Robot Navigation in Isaac Sim
+
+## Prerequisites
+- Isaac Sim 2023.1.1 or newer
+- ROS 2 Humble bridge installed
+
+## Setup Isaac Sim
+
+```bash
+# Launch Isaac Sim
+./isaac-sim.sh
+
+# In Isaac Sim: Load warehouse environment
+# File → Open → Isaac/Environments/Simple_Warehouse
+```
+
+## ROS 2 Bridge Configuration
+
+```python
+# In Isaac Sim Python console
+import omni.isaac.core.utils.extensions as extensions_utils
+extensions_utils.enable_extension("omni.isaac.ros2_bridge")
+
+# Configure ROS 2 topics
+from omni.isaac.ros2_bridge import create_publisher
+create_publisher("/cmd_vel", "geometry_msgs/Twist")
+```
+
+## Navigate Robot
+
+```bash
+# Terminal 1: Launch Isaac Sim with ROS 2
+
+# Terminal 2: Send navigation commands
+ros2 topic pub /cmd_vel geometry_msgs/msg/Twist \
+  "{linear: {x: 0.5}, angular: {z: 0.0}}"
+```
+
+## Expected Behavior
+- Robot moves forward at 0.5 m/s
+- Visualized in Isaac Sim viewport
+- Sensor data published to ROS 2 topics
+
+## CPU vs GPU Performance
+- GPU: Real-time ray tracing, 60+ FPS
+- CPU: Reduced quality, 10-20 FPS (still functional)

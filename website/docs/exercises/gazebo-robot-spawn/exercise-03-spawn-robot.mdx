@@ -1,0 +1,51 @@
+---
+title: "Exercise 3: Spawn Robot in Gazebo"
+sidebar_label: "Ex 3: Gazebo Spawn"
+---
+
+# Exercise 3: Spawning a Robot in Gazebo
+
+## Setup Gazebo
+```bash
+# Install Gazebo
+sudo apt install ros-humble-gazebo-ros-pkgs
+
+# Launch empty world
+ros2 launch gazebo_ros gazebo.launch.py
+```
+
+## Create URDF Robot Description
+
+```xml
+<?xml version="1.0"?>
+<robot name="simple_robot">
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="0.5 0.3 0.2"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0 0 0.8 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.5 0.3 0.2"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>
+```
+
+## Spawn Robot
+```bash
+ros2 run gazebo_ros spawn_entity.py -entity my_robot -file robot.urdf
+```
+
+## Expected Result
+- Robot appears in Gazebo at origin (0, 0, 0)
+- Blue box represents robot body
+- Can be manipulated via GUI
+
+## CPU Compatibility Notes
+Gazebo runs on CPU - no GPU required for basic simulations.

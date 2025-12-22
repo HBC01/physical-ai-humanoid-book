@@ -1,0 +1,57 @@
+---
+title: "Exercise 2: ROS 2 Subscriber"
+sidebar_label: "Ex 2: Subscriber"
+---
+
+# Exercise 2: Creating a ROS 2 Subscriber
+
+## Overview
+Learn to create subscriber nodes that receive and process messages from topics.
+
+## Code
+
+```python
+#!/usr/bin/env python3
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+
+class SimpleSubscriber(Node):
+    def __init__(self):
+        super().__init__('simple_subscriber')
+
+        self.subscription = self.create_subscription(
+            String,
+            'chatter',
+            self.listener_callback,
+            10
+        )
+
+        self.get_logger().info('Subscriber started, waiting for messages...')
+
+    def listener_callback(self, msg):
+        self.get_logger().info(f'Received: "{msg.data}"')
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = SimpleSubscriber()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+```
+
+## Expected Output
+```
+[INFO] [simple_subscriber]: Received: "Hello ROS 2! Count: 0"
+[INFO] [simple_subscriber]: Received: "Hello ROS 2! Count: 1"
+```
+
+## Challenges
+1. Subscribe to multiple topics simultaneously
+2. Process messages and republish transformed data
+3. Implement message filtering based on content
+
+## Troubleshooting
+- Ensure publisher is running first
+- Check topic names match exactly
+- Verify QoS compatibility

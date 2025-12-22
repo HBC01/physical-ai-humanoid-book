@@ -1,0 +1,51 @@
+---
+title: "Exercise 4: Robot Control with PyBullet"
+sidebar_label: "Ex 4: PyBullet Control"
+---
+
+# Exercise 4: Controlling a Robot with PyBullet
+
+## Install PyBullet
+```bash
+pip install pybullet
+```
+
+## Simple Robot Controller
+
+```python
+import pybullet as p
+import pybullet_data
+import time
+
+# Connect to physics server
+physicsClient = p.connect(p.GUI)
+p.setAdditionalSearchPath(pybullet_data.getDataPath())
+p.setGravity(0, 0, -9.8)
+
+# Load ground plane and robot
+planeId = p.loadURDF("plane.urdf")
+robotId = p.loadURDF("r2d2.urdf", [0, 0, 1])
+
+# Simulation loop
+for i in range(1000):
+    # Apply forces/torques
+    p.applyExternalForce(robotId, -1, [10, 0, 0], [0, 0, 0], p.WORLD_FRAME)
+
+    p.stepSimulation()
+    time.sleep(1./240.)
+
+p.disconnect()
+```
+
+## Controls
+- Mouse: Rotate camera
+- WASD: Move camera
+- Q/E: Up/down
+
+## Challenges
+1. Make robot move forward
+2. Implement PID controller for position
+3. Add obstacles and collision detection
+
+## Performance
+PyBullet is CPU-optimized and runs well without GPU.

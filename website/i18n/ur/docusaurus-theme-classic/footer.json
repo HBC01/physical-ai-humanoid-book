@@ -1,0 +1,30 @@
+{
+  "copyright": {
+    "message": "کاپی رائٹ © {year} Physical AI & Humanoid Robotics. تمام حقوق محفوظ ہیں۔",
+    "description": "Footer copyright message"
+  },
+  "link.title.Learn": {
+    "message": "سیکھیں",
+    "description": "Footer link section title"
+  },
+  "link.title.Community": {
+    "message": "کمیونٹی",
+    "description": "Footer link section title"
+  },
+  "link.title.More": {
+    "message": "مزید",
+    "description": "Footer link section title"
+  },
+  "link.item.label.Tutorial": {
+    "message": "ٹیوٹوریل",
+    "description": "Footer link label"
+  },
+  "link.item.label.Documentation": {
+    "message": "دستاویزات",
+    "description": "Footer link label"
+  },
+  "link.item.label.GitHub": {
+    "message": "GitHub",
+    "description": "Footer link label"
+  }
+}

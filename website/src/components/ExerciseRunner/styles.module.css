@@ -1,0 +1,140 @@
+.exerciseRunner {
+  border: 2px solid var(--ifm-color-primary-light);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 2rem 0;
+  background-color: var(--ifm-background-surface-color);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.header h3 {
+  margin: 0;
+  color: var(--ifm-color-primary);
+}
+
+.metadata {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.difficulty {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.time {
+  font-size: 0.875rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.prerequisites {
+  background-color: var(--ifm-color-warning-contrast-background);
+  border-left: 4px solid var(--ifm-color-warning);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 4px;
+}
+
+.prerequisites ul {
+  margin: 0.5rem 0 0 0;
+  padding-left: 1.5rem;
+}
+
+.actions {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.button {
+  padding: 0.75rem 1.5rem;
+  border: 2px solid var(--ifm-color-primary);
+  background-color: var(--ifm-color-primary);
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.button:hover {
+  background-color: var(--ifm-color-primary-dark);
+  transform: translateY(-2px);
+}
+
+.button.completed {
+  background-color: #4caf50;
+  border-color: #4caf50;
+}
+
+.notes {
+  margin-top: 1rem;
+}
+
+.notes label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--ifm-color-emphasis-800);
+}
+
+.textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 6px;
+  font-family: var(--ifm-font-family-base);
+  font-size: 0.9375rem;
+  resize: vertical;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 0 0 2px var(--ifm-color-primary-lightest);
+}
+
+.celebration {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  border-radius: 6px;
+  color: #155724;
+  font-weight: 600;
+  text-align: center;
+}
+
+[data-theme='dark'] .celebration {
+  background-color: rgba(76, 175, 80, 0.15);
+  border-color: rgba(76, 175, 80, 0.3);
+  color: #4caf50;
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+  }
+
+  .metadata {
+    margin-top: 0.5rem;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .button {
+    width: 100%;
+  }
+}

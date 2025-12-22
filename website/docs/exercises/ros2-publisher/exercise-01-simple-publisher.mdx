@@ -1,0 +1,236 @@
+---
+title: "Exercise 1: ROS 2 Simple Publisher"
+sidebar_label: "Ex 1: Simple Publisher"
+---
+
+# Exercise 1: Creating a Simple ROS 2 Publisher
+
+## Learning Objectives
+
+- Create a ROS 2 Python publisher node
+- Understand the publish-subscribe pattern
+- Configure Quality of Service (QoS) settings
+- Debug topic communication
+
+## Prerequisites
+
+- ROS 2 Humble installed (Ubuntu 22.04 or Docker)
+- Basic Python knowledge
+- Completed Module 2, Chapter 1
+
+## Setup
+
+### 1. Create Workspace
+
+```bash
+mkdir -p ~/ros2_ws/src
+cd ~/ros2_ws/src
+ros2 pkg create --build-type ament_python simple_publisher
+cd simple_publisher
+```
+
+### 2. Create Publisher Node
+
+Create `simple_publisher/publisher_node.py`:
+
+```python
+#!/usr/bin/env python3
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+
+class SimplePublisher(Node):
+    def __init__(self):
+        super().__init__('simple_publisher')
+
+        # Create publisher
+        self.publisher = self.create_publisher(
+            String,
+            'chatter',
+            10  # QoS depth
+        )
+
+        # Create timer (1 Hz = every 1 second)
+        self.timer = self.create_timer(1.0, self.timer_callback)
+        self.counter = 0
+
+        self.get_logger().info('Simple Publisher Started')
+
+    def timer_callback(self):
+        msg = String()
+        msg.data = f'Hello ROS 2! Count: {self.counter}'
+        self.publisher.publish(msg)
+
+        self.get_logger().info(f'Publishing: "{msg.data}"')
+        self.counter += 1
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = SimplePublisher()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
+```
+
+### 3. Update setup.py
+
+Add entry point in `setup.py`:
+
+```python
+entry_points={
+    'console_scripts': [
+        'publisher_node = simple_publisher.publisher_node:main',
+    ],
+},
+```
+
+### 4. Build Package
+
+```bash
+cd ~/ros2_ws
+colcon build --packages-select simple_publisher
+source install/setup.bash
+```
+
+## Running the Exercise
+
+### Terminal 1: Run Publisher
+
+```bash
+ros2 run simple_publisher publisher_node
+```
+
+**Expected Output:**
+```
+[INFO] [simple_publisher]: Simple Publisher Started
+[INFO] [simple_publisher]: Publishing: "Hello ROS 2! Count: 0"
+[INFO] [simple_publisher]: Publishing: "Hello ROS 2! Count: 1"
+...
+```
+
+### Terminal 2: Echo Topic
+
+```bash
+ros2 topic echo /chatter
+```
+
+**Expected Output:**
+```
+data: 'Hello ROS 2! Count: 0'
+---
+data: 'Hello ROS 2! Count: 1'
+---
+```
+
+### Terminal 3: Inspect Topic
+
+```bash
+# List all topics
+ros2 topic list
+
+# Get topic info
+ros2 topic info /chatter
+
+# Check publish rate
+ros2 topic hz /chatter
+```
+
+## Challenges
+
+### Challenge 1: Change Publish Rate
+
+Modify the timer to publish at 10 Hz instead of 1 Hz.
+
+<details>
+<summary>Solution</summary>
+
+```python
+self.timer = self.create_timer(0.1, self.timer_callback)  # 10 Hz
+```
+</details>
+
+### Challenge 2: Publish Robot Pose
+
+Create a publisher that publishes `geometry_msgs/Pose` messages.
+
+<details>
+<summary>Solution</summary>
+
+```python
+from geometry_msgs.msg import Pose
+
+class PosePublisher(Node):
+    def __init__(self):
+        super().__init__('pose_publisher')
+        self.publisher = self.create_publisher(Pose, 'robot_pose', 10)
+        self.timer = self.create_timer(1.0, self.timer_callback)
+
+    def timer_callback(self):
+        msg = Pose()
+        msg.position.x = 1.0
+        msg.position.y = 2.0
+        msg.position.z = 0.0
+        msg.orientation.w = 1.0
+        self.publisher.publish(msg)
+```
+</details>
+
+### Challenge 3: QoS Configuration
+
+Modify the publisher to use BEST_EFFORT reliability.
+
+<details>
+<summary>Solution</summary>
+
+```python
+from rclpy.qos import QoSProfile, ReliabilityPolicy
+
+qos = QoSProfile(
+    reliability=ReliabilityPolicy.BEST_EFFORT,
+    depth=10
+)
+
+self.publisher = self.create_publisher(String, 'chatter', qos)
+```
+</details>
+
+## Troubleshooting
+
+### Issue: "Package not found"
+
+**Solution:** Make sure you sourced the workspace:
+```bash
+source ~/ros2_ws/install/setup.bash
+```
+
+### Issue: No output in topic echo
+
+**Solution:** Check if publisher is running:
+```bash
+ros2 node list
+ros2 topic list
+```
+
+### Issue: Messages not received
+
+**Solution:** Check QoS compatibility:
+```bash
+ros2 topic info /chatter --verbose
+```
+
+## Learning Checkpoints
+
+✅ I can create a ROS 2 Python package
+✅ I understand the publisher pattern
+✅ I can configure publish rates with timers
+✅ I can debug topics with CLI tools
+✅ I understand QoS settings
+
+## Next Steps
+
+- Complete [Exercise 2: ROS 2 Subscriber](/docs/exercises/ros2-subscriber/exercise-02-subscriber-node)
+- Read [Module 2, Chapter 2: Nodes and Topics](/docs/modules/02-ros2/chapter-02-nodes-topics)
+- Experiment with different message types from `std_msgs` and `geometry_msgs`

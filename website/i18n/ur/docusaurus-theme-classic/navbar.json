@@ -1,0 +1,26 @@
+{
+  "title": {
+    "message": "Physical AI اور Humanoid Robotics",
+    "description": "The title in the navbar"
+  },
+  "logo.alt": {
+    "message": "Physical AI لوگو",
+    "description": "Logo alt text"
+  },
+  "item.label.Docs": {
+    "message": "دستاویزات",
+    "description": "Navbar item label for Docs"
+  },
+  "item.label.Exercises": {
+    "message": "مشقیں",
+    "description": "Navbar item label for Exercises"
+  },
+  "item.label.Dashboard": {
+    "message": "ڈیش بورڈ",
+    "description": "Navbar item label for Dashboard"
+  },
+  "item.label.GitHub": {
+    "message": "GitHub",
+    "description": "Navbar item label for GitHub"
+  }
+}

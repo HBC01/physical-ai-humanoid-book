@@ -143,36 +143,74 @@ export const useProgressStore = create<LearningStore>()(
         }),
 
       getRecommendations: () => {
-        // TODO: Implement rule-based recommendation engine (Phase 6, T079-T082)
-        // Rules: sequential progression, prerequisites, struggle detection, goals, time-away
+        // Recommendations logic is in recommendations.ts
+        // This is a placeholder for direct access if needed
         return [];
       },
 
       exportData: () => {
         const state = get();
-        const data = JSON.stringify(state, null, 2);
+        const exportData = {
+          profile: state.profile,
+          progress: state.progress,
+          metadata: {
+            ...state.metadata,
+            exportedAt: Date.now(),
+          },
+        };
+        const data = JSON.stringify(exportData, null, 2);
         const blob = new Blob([data], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `learning-progress-${Date.now()}.json`;
+        a.download = `learning-progress-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
         URL.revokeObjectURL(url);
       },
 
       importData: (data) => {
         try {
           const parsed = JSON.parse(data);
-          // TODO: Add schema validation
-          set(parsed);
+
+          // Validate schema
+          if (!parsed.profile || !parsed.progress || !parsed.metadata) {
+            throw new Error('Invalid data structure');
+          }
+
+          // Validate required fields
+          if (!parsed.progress.completedChapters || !parsed.progress.chaptersInProgress) {
+            throw new Error('Missing required progress fields');
+          }
+
+          // Merge imported data with current state
+          set({
+            profile: parsed.profile,
+            progress: {
+              completedChapters: parsed.progress.completedChapters || [],
+              chaptersInProgress: parsed.progress.chaptersInProgress || {},
+              exerciseAttempts: parsed.progress.exerciseAttempts || {},
+            },
+            metadata: {
+              ...parsed.metadata,
+              lastUpdated: Date.now(),
+            },
+          });
+
+          console.log('Progress data imported successfully');
         } catch (err) {
-          console.error('Invalid progress data:', err);
-          alert('Failed to import progress data. Invalid format.');
+          console.error('Import failed:', err);
+          throw new Error('Failed to import progress data. Invalid format or corrupted file.');
         }
       },
 
       clearData: () => {
-        if (confirm('Delete all progress? This cannot be undone.')) {
+        const confirmed = typeof window !== 'undefined'
+          ? window.confirm('Delete all progress? This action cannot be undone.')
+          : false;
+
+        if (confirmed) {
           set({
             profile: null,
             progress: {
@@ -186,6 +224,7 @@ export const useProgressStore = create<LearningStore>()(
               version: '1.0.0',
             },
           });
+          console.log('All progress data cleared');
         }
       },
     }),

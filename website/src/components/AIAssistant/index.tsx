@@ -1,24 +1,151 @@
 /**
- * AIAssistant Component
- * RAG-powered chatbot for answering student questions about textbook content
+ * AI Assistant Component
  *
- * Features:
- * - Client-side vector search for content retrieval
- * - API calls to LLM for generation
- * - Citation parsing and linking
- * - Conversation history
- * - Multilingual support (English/Urdu)
+ * Main component that integrates all RAG functionality.
+ * Can be embedded in documentation pages or displayed as a floating widget.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useAIAssistant } from '../../hooks/useAIAssistant';
+import ChatInterface from './ChatInterface';
+import styles from './styles.module.css';
 
-export const AIAssistant: React.FC = () => {
-  // TODO: Implement RAG chatbot UI (Phase 5, T061-T065)
+interface AIAssistantProps {
+  language?: 'en' | 'ur';
+  mode?: 'inline' | 'floating';
+  defaultOpen?: boolean;
+}
+
+export default function AIAssistant({
+  language = 'en',
+  mode = 'inline',
+  defaultOpen = false,
+}: AIAssistantProps): JSX.Element {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  const {
+    messages,
+    isLoading,
+    error,
+    isEmbeddingsReady,
+    sendMessage,
+    clearMessages,
+  } = useAIAssistant({ language, useChapterContext: true });
+
+  // Inline mode: always visible
+  if (mode === 'inline') {
+    return (
+      <div className={styles.aiAssistantInline}>
+        <div className={styles.assistantHeader}>
+          <div className={styles.headerContent}>
+            <span className={styles.headerIcon}>🤖</span>
+            <div>
+              <h3 className={styles.headerTitle}>
+                {language === 'ur' ? 'AI تدریسی معاون' : 'AI Teaching Assistant'}
+              </h3>
+              <p className={styles.headerSubtitle}>
+                {language === 'ur'
+                  ? 'اپنے سوالات پوچھیں'
+                  : 'Ask questions about the textbook'}
+              </p>
+            </div>
+          </div>
+          {messages.length > 0 && (
+            <button
+              onClick={clearMessages}
+              className={styles.clearButton}
+              title={language === 'ur' ? 'چیٹ صاف کریں' : 'Clear chat'}
+            >
+              🗑️
+            </button>
+          )}
+        </div>
+
+        {!isEmbeddingsReady && (
+          <div className={styles.loadingBanner}>
+            <span className={styles.loadingSpinner}>⏳</span>
+            {language === 'ur'
+              ? 'AI معاون لوڈ ہو رہا ہے...'
+              : 'Loading AI assistant...'}
+          </div>
+        )}
+
+        <ChatInterface
+          messages={messages}
+          onSendMessage={sendMessage}
+          isLoading={isLoading}
+          error={error || undefined}
+          language={language}
+        />
+      </div>
+    );
+  }
+
+  // Floating mode: collapsible widget
   return (
-    <div className="ai-assistant-placeholder">
-      <p>AI Assistant (Coming in Phase 5)</p>
-    </div>
-  );
-};
+    <>
+      {!isOpen && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className={styles.floatingButton}
+          aria-label={language === 'ur' ? 'AI معاون کھولیں' : 'Open AI Assistant'}
+        >
+          🤖
+          <span className={styles.floatingButtonText}>
+            {language === 'ur' ? 'مدد چاہیے؟' : 'Need help?'}
+          </span>
+        </button>
+      )}
 
-export default AIAssistant;
+      {isOpen && (
+        <div className={styles.floatingWidget}>
+          <div className={styles.floatingHeader}>
+            <div className={styles.headerContent}>
+              <span className={styles.headerIcon}>🤖</span>
+              <div>
+                <h3 className={styles.headerTitle}>
+                  {language === 'ur' ? 'AI معاون' : 'AI Assistant'}
+                </h3>
+              </div>
+            </div>
+            <div className={styles.floatingActions}>
+              {messages.length > 0 && (
+                <button
+                  onClick={clearMessages}
+                  className={styles.iconButton}
+                  title={language === 'ur' ? 'چیٹ صاف کریں' : 'Clear chat'}
+                >
+                  🗑️
+                </button>
+              )}
+              <button
+                onClick={() => setIsOpen(false)}
+                className={styles.iconButton}
+                title={language === 'ur' ? 'بند کریں' : 'Close'}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
+          {!isEmbeddingsReady && (
+            <div className={styles.loadingBanner}>
+              <span className={styles.loadingSpinner}>⏳</span>
+              {language === 'ur'
+                ? 'AI معاون لوڈ ہو رہا ہے...'
+                : 'Loading AI assistant...'}
+            </div>
+          )}
+
+          <ChatInterface
+            messages={messages}
+            onSendMessage={sendMessage}
+            isLoading={isLoading}
+            error={error || undefined}
+            language={language}
+          />
+        </div>
+      )}
+    </>
+  );
+}
