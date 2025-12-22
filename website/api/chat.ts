@@ -2,7 +2,7 @@
  * Vercel Serverless Function for RAG Chat
  *
  * Handles LLM API calls with retrieved context.
- * Uses GPT-4o-mini for cost-effective responses.
+ * Uses Gemini 2.5 Flash for cost-effective responses.
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -28,7 +28,7 @@ interface ChatResponse {
   error?: string;
 }
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const SYSTEM_PROMPT_EN = `You are an AI teaching assistant for a Physical AI & Humanoid Robotics textbook. Your role is to:
 
 1. Answer questions clearly and accurately using the provided context
@@ -95,34 +95,56 @@ function extractCitations(response: string, context: ChatRequest['context']): st
 }
 
 /**
- * Call OpenAI API
+ * Call Gemini API
  */
-async function callOpenAI(
+async function callGemini(
   messages: Array<{ role: string; content: string }>,
   temperature: number = 0.7
 ): Promise<string> {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages,
+  // Separate system instruction from conversation
+  const systemInstruction = messages.find((msg) => msg.role === 'system');
+  const conversationMessages = messages.filter((msg) => msg.role !== 'system');
+
+  // Convert messages to Gemini format
+  const contents = conversationMessages.map((msg) => ({
+    role: msg.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: msg.content }],
+  }));
+
+  const requestBody: any = {
+    contents,
+    generationConfig: {
       temperature,
-      max_tokens: 1000,
-      top_p: 0.9,
-    }),
-  });
+      maxOutputTokens: 1000,
+      topP: 0.9,
+    },
+  };
+
+  // Add system instruction if present
+  if (systemInstruction) {
+    requestBody.systemInstruction = {
+      parts: [{ text: systemInstruction.content }],
+    };
+  }
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    }
+  );
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`OpenAI API error: ${response.statusText} - ${error}`);
+    throw new Error(`Gemini API error: ${response.statusText} - ${error}`);
   }
 
   const data = await response.json();
-  return data.choices[0].message.content;
+  return data.candidates[0].content.parts[0].text;
 }
 
 /**
@@ -139,8 +161,8 @@ export default async function handler(
   }
 
   // Check API key
-  if (!OPENAI_API_KEY) {
-    console.error('OPENAI_API_KEY not configured');
+  if (!GEMINI_API_KEY) {
+    console.error('GEMINI_API_KEY not configured');
     res.status(500).json({ error: 'API key not configured' });
     return;
   }
@@ -174,8 +196,8 @@ export default async function handler(
     // Add current message
     messages.push({ role: 'user', content: contextPrompt });
 
-    // Call OpenAI
-    const aiResponse = await callOpenAI(messages);
+    // Call Gemini
+    const aiResponse = await callGemini(messages);
 
     // Extract citations
     const citations = extractCitations(aiResponse, body.context);

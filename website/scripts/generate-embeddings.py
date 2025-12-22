@@ -29,7 +29,7 @@ OUTPUT_FILE = Path(__file__).parent.parent / "static" / "embeddings.json"
 MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 CHUNK_SIZE = 800  # Target tokens per chunk
 CHUNK_OVERLAP = 50  # Overlap tokens between chunks
-ENCODING = "cl100k_base"  # OpenAI tokenizer
+ENCODING = "cl100k_base"  # Tokenizer for chunking (cl100k_base encoding)
 
 def extract_frontmatter(content: str) -> Dict[str, Any]:
     """Extract YAML frontmatter from MDX content."""

@@ -3,7 +3,7 @@
   "outputDirectory": "build",
   "framework": "docusaurus",
   "env": {
-    "OPENAI_API_KEY": "@openai-api-key"
+    "GEMINI_API_KEY": "@gemini-api-key"
   },
   "functions": {
     "api/**/*.ts": {
