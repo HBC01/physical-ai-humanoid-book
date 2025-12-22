@@ -2,9 +2,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "build",
   "framework": "docusaurus",
-  "env": {
-    "GEMINI_API_KEY": "@gemini-api-key"
-  },
   "functions": {
     "api/**/*.ts": {
       "memory": 1024,
