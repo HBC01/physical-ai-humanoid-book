@@ -61,14 +61,6 @@ export default function AIAssistant({
           )}
         </div>
 
-        {!isEmbeddingsReady && (
-          <div className={styles.loadingBanner}>
-            <span className={styles.loadingSpinner}>⏳</span>
-            {language === 'ur'
-              ? 'AI معاون لوڈ ہو رہا ہے...'
-              : 'Loading AI assistant...'}
-          </div>
-        )}
 
         <ChatInterface
           messages={messages}
@@ -128,14 +120,6 @@ export default function AIAssistant({
             </div>
           </div>
 
-          {!isEmbeddingsReady && (
-            <div className={styles.loadingBanner}>
-              <span className={styles.loadingSpinner}>⏳</span>
-              {language === 'ur'
-                ? 'AI معاون لوڈ ہو رہا ہے...'
-                : 'Loading AI assistant...'}
-            </div>
-          )}
 
           <ChatInterface
             messages={messages}

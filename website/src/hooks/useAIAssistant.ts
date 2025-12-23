@@ -55,17 +55,18 @@ export function useAIAssistant(
   const [isEmbeddingsReady, setIsEmbeddingsReady] = useState(false);
   const [lastUserMessage, setLastUserMessage] = useState<string>('');
 
-  // Load embeddings on mount
+  // Load embeddings on mount (optional - fallback to keyword search if unavailable)
   useEffect(() => {
     if (!isEmbeddingsLoaded()) {
       loadEmbeddings()
         .then(() => {
           setIsEmbeddingsReady(true);
-          console.log('Embeddings loaded successfully');
+          console.log('Embeddings loaded successfully - using semantic search');
         })
         .catch((err) => {
-          console.error('Failed to load embeddings:', err);
-          setError('Failed to load AI assistant data. Some features may be limited.');
+          console.warn('Embeddings not available, using keyword-based search:', err);
+          // Don't set error - keyword fallback will work fine
+          setIsEmbeddingsReady(false);
         });
     } else {
       setIsEmbeddingsReady(true);
