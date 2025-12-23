@@ -102,7 +102,7 @@ The **Physical AI & Humanoid Robotics Book** is a comprehensive, bilingual educa
 ### 🎮 Interactive Learning
 
 - **8 Simulation Exercises** - Hands-on practice with ROS 2, Gazebo, and Isaac Sim
-- **AI Assistant (RAG)** - Context-aware chatbot for learning support
+- **AI Assistant (RAG)** - Context-aware chatbot powered by Gemini 2.5 Flash with keyword-based retrieval
 - **Progress Tracking** - Monitor your learning journey
 - **Code Examples** - Copy-paste ready examples in every chapter
 
