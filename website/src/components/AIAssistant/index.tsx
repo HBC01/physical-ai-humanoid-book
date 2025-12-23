@@ -28,6 +28,7 @@ export default function AIAssistant({
     isLoading,
     error,
     isEmbeddingsReady,
+    suggestions,
     sendMessage,
     clearMessages,
   } = useAIAssistant({ language, useChapterContext: true });
@@ -68,6 +69,7 @@ export default function AIAssistant({
           isLoading={isLoading}
           error={error || undefined}
           language={language}
+          suggestions={suggestions}
         />
       </div>
     );
@@ -127,6 +129,7 @@ export default function AIAssistant({
             isLoading={isLoading}
             error={error || undefined}
             language={language}
+            suggestions={suggestions}
           />
         </div>
       )}

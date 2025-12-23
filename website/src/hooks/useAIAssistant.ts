@@ -17,6 +17,7 @@ import {
   retrieveChunks,
   retrieveByKeywords,
   getChapterContext,
+  generateSuggestions,
 } from '../services/rag/retrieval';
 import { loadEmbeddings, isEmbeddingsLoaded } from '../services/rag/embeddings';
 
@@ -31,6 +32,7 @@ interface UseAIAssistantReturn {
   isLoading: boolean;
   error: string | null;
   isEmbeddingsReady: boolean;
+  suggestions: string[];
   sendMessage: (message: string) => Promise<void>;
   clearMessages: () => void;
   retryLastMessage: () => Promise<void>;
@@ -54,6 +56,7 @@ export function useAIAssistant(
   const [error, setError] = useState<string | null>(null);
   const [isEmbeddingsReady, setIsEmbeddingsReady] = useState(false);
   const [lastUserMessage, setLastUserMessage] = useState<string>('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
 
   // Load embeddings on mount (optional - fallback to keyword search if unavailable)
   useEffect(() => {
@@ -182,6 +185,21 @@ export function useAIAssistant(
         };
 
         setMessages((prev) => [...prev, assistantMessage]);
+
+        // Generate intelligent suggestions based on context
+        const newSuggestions = generateSuggestions(
+          message,
+          context.map((c) => ({
+            content: c.content,
+            chapter: c.chapter,
+            section: c.section,
+            url: c.url,
+            module: '', // Not needed for suggestions
+            embedding: [], // Not needed for suggestions
+          })),
+          language
+        );
+        setSuggestions(newSuggestions);
       } catch (err) {
         console.error('Send message error:', err);
 
@@ -217,6 +235,7 @@ export function useAIAssistant(
     setMessages([]);
     setError(null);
     setLastUserMessage('');
+    setSuggestions([]);
   }, []);
 
   return {
@@ -224,6 +243,7 @@ export function useAIAssistant(
     isLoading,
     error,
     isEmbeddingsReady,
+    suggestions,
     sendMessage,
     clearMessages,
     retryLastMessage,

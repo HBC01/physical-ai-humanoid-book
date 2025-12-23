@@ -9,6 +9,7 @@ interface ChatInterfaceProps {
   isLoading: boolean;
   error?: string;
   language?: 'en' | 'ur';
+  suggestions?: string[];
 }
 
 export default function ChatInterface({
@@ -17,6 +18,7 @@ export default function ChatInterface({
   isLoading,
   error,
   language = 'en',
+  suggestions = [],
 }: ChatInterfaceProps): JSX.Element {
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -122,6 +124,29 @@ export default function ChatInterface({
         {error && (
           <div className={styles.errorMessage}>
             <strong>{language === 'ur' ? 'خرابی:' : 'Error:'}</strong> {error}
+          </div>
+        )}
+
+        {/* Intelligent Suggestions */}
+        {!isLoading && suggestions.length > 0 && messages.length > 0 && (
+          <div className={styles.suggestionsContainer}>
+            <p className={styles.suggestionsTitle}>
+              {language === 'ur' ? '💡 متعلقہ سوالات:' : '💡 Related questions:'}
+            </p>
+            <div className={styles.suggestions}>
+              {suggestions.map((suggestion, index) => (
+                <button
+                  key={index}
+                  className={styles.suggestionChip}
+                  onClick={() => {
+                    onSendMessage(suggestion);
+                  }}
+                  disabled={isLoading}
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

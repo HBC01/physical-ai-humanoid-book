@@ -43,7 +43,7 @@ export async function loadEmbeddings(): Promise<EmbeddingData> {
   }
 
   // Start new load
-  loadingPromise = fetch('/physical-ai-humanoid-book/embeddings.json')
+  loadingPromise = fetch('/embeddings.json')
     .then((response) => {
       if (!response.ok) {
         throw new Error(`Failed to load embeddings: ${response.statusText}`);
