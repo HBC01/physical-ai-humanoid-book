@@ -6,6 +6,7 @@ import styles from './styles.module.css';
 interface ChatInterfaceProps {
   messages: Message[];
   onSendMessage: (message: string) => void;
+  onClearChat?: () => void;
   isLoading: boolean;
   error?: string;
   language?: 'en' | 'ur';
@@ -15,18 +16,42 @@ interface ChatInterfaceProps {
 export default function ChatInterface({
   messages,
   onSendMessage,
+  onClearChat,
   isLoading,
   error,
   language = 'en',
   suggestions = [],
 }: ChatInterfaceProps): JSX.Element {
   const [inputValue, setInputValue] = useState('');
+  const [showDetailButton, setShowDetailButton] = useState(false);
+  const [lastQuestion, setLastQuestion] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+
+    // Check if last assistant message suggests more detail
+    if (messages.length > 0) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg.role === 'assistant') {
+        const content = lastMsg.content.toLowerCase();
+        const needsDetail = content.includes('would you like') ||
+                           content.includes('detailed explanation') ||
+                           content.includes('کیا آپ') ||
+                           content.includes('تفصیلی');
+        setShowDetailButton(needsDetail);
+
+        // Store last user question
+        if (messages.length >= 2) {
+          const lastUserMsg = messages[messages.length - 2];
+          if (lastUserMsg.role === 'user') {
+            setLastQuestion(lastUserMsg.content);
+          }
+        }
+      }
+    }
   }, [messages]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -39,11 +64,34 @@ export default function ChatInterface({
 
     onSendMessage(trimmedMessage);
     setInputValue('');
+    setShowDetailButton(false);
 
     // Focus back on input
     setTimeout(() => {
       inputRef.current?.focus();
     }, 100);
+  };
+
+  const handleDetailedExplanation = () => {
+    if (lastQuestion) {
+      const detailRequest = language === 'ur'
+        ? `${lastQuestion} - اس کی تفصیلی وضاحت دیں`
+        : `${lastQuestion} - explain in detail`;
+      onSendMessage(detailRequest);
+      setShowDetailButton(false);
+    }
+  };
+
+  const handleClearChat = () => {
+    if (onClearChat && window.confirm(
+      language === 'ur'
+        ? 'کیا آپ واقعی چیٹ صاف کرنا چاہتے ہیں؟'
+        : 'Are you sure you want to clear the chat?'
+    )) {
+      onClearChat();
+      setShowDetailButton(false);
+      setLastQuestion('');
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -63,6 +111,20 @@ export default function ChatInterface({
 
   return (
     <div className={styles.chatInterface} dir={language === 'ur' ? 'rtl' : 'ltr'}>
+      {/* Header with Clear Chat button */}
+      {messages.length > 0 && (
+        <div className={styles.chatHeader}>
+          <button
+            className={styles.clearChatButton}
+            onClick={handleClearChat}
+            disabled={isLoading}
+            aria-label={language === 'ur' ? 'چیٹ صاف کریں' : 'Clear chat'}
+          >
+            🗑️ {language === 'ur' ? 'چیٹ صاف کریں' : 'Clear Chat'}
+          </button>
+        </div>
+      )}
+
       {/* Messages */}
       <div className={styles.messagesContainer}>
         {messages.length === 0 && (
@@ -127,11 +189,25 @@ export default function ChatInterface({
           </div>
         )}
 
+        {/* Detailed Explanation Button */}
+        {showDetailButton && !isLoading && (
+          <div className={styles.detailButtonContainer}>
+            <button
+              className={styles.detailButton}
+              onClick={handleDetailedExplanation}
+            >
+              {language === 'ur' ? '📚 مزید تفصیلی وضاحت چاہیے' : '📚 Get Detailed Explanation'}
+            </button>
+          </div>
+        )}
+
         {/* Intelligent Suggestions */}
-        {!isLoading && suggestions.length > 0 && messages.length > 0 && (
+        {!isLoading && suggestions.length > 0 && (
           <div className={styles.suggestionsContainer}>
             <p className={styles.suggestionsTitle}>
-              {language === 'ur' ? '💡 متعلقہ سوالات:' : '💡 Related questions:'}
+              {language === 'ur'
+                ? (messages.length === 0 ? '💡 تجویز کردہ سوالات:' : '💡 متعلقہ سوالات:')
+                : (messages.length === 0 ? '💡 Suggested questions:' : '💡 Related questions:')}
             </p>
             <div className={styles.suggestions}>
               {suggestions.map((suggestion, index) => (

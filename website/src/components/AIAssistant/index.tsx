@@ -66,6 +66,7 @@ export default function AIAssistant({
         <ChatInterface
           messages={messages}
           onSendMessage={sendMessage}
+          onClearChat={clearMessages}
           isLoading={isLoading}
           error={error || undefined}
           language={language}
@@ -126,6 +127,7 @@ export default function AIAssistant({
           <ChatInterface
             messages={messages}
             onSendMessage={sendMessage}
+            onClearChat={clearMessages}
             isLoading={isLoading}
             error={error || undefined}
             language={language}

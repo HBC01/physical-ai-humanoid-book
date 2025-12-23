@@ -102,7 +102,11 @@ The **Physical AI & Humanoid Robotics Book** is a comprehensive, bilingual educa
 ### 🎮 Interactive Learning
 
 - **8 Simulation Exercises** - Hands-on practice with ROS 2, Gazebo, and Isaac Sim
-- **AI Assistant (RAG)** - Context-aware chatbot powered by Gemini 2.5 Flash with keyword-based retrieval
+- **AI Assistant (RAG)** - Intelligent two-stage learning assistant:
+  - **Book-First Responses**: Short, concise answers directly from textbook content (2-4 sentences)
+  - **Detailed Explanations**: Optional in-depth explanations using LLM knowledge on user request
+  - **Clear Chat Option**: Reset conversation anytime with confirmation prompt
+  - Powered by Gemini 2.5 Flash with keyword-based retrieval
 - **Progress Tracking** - Monitor your learning journey
 - **Code Examples** - Copy-paste ready examples in every chapter
 
@@ -332,7 +336,10 @@ A comprehensive, bilingual, AI-native textbook that provides:
 ### Innovation
 
 1. **First Bilingual Physical AI Curriculum** - English + Urdu support breaks language barriers
-2. **AI-Native Design** - Integrated RAG chatbot for contextual learning support
+2. **AI-Native Design** - Intelligent two-stage learning assistant:
+   - Prioritizes book content for accurate, concise answers
+   - Offers detailed LLM explanations on-demand
+   - Clear chat functionality for fresh starts
 3. **Simulation-First Approach** - No expensive hardware required, CPU-friendly exercises
 4. **Modern Web Technologies** - Docusaurus 3.9, React 19, TypeScript 5.6
 

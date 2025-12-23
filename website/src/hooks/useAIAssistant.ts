@@ -74,7 +74,21 @@ export function useAIAssistant(
     } else {
       setIsEmbeddingsReady(true);
     }
-  }, []);
+
+    // Set initial suggestions when component mounts
+    const initialSuggestions = language === 'ur' ? [
+      'ROS2 کیا ہے؟',
+      'Humanoid robots کیسے کام کرتے ہیں؟',
+      'Physical AI کی مثالیں دیں',
+      'Robot control systems کی وضاحت کریں'
+    ] : [
+      'What is ROS2?',
+      'How do humanoid robots work?',
+      'Explain Physical AI with examples',
+      'What are robot control systems?'
+    ];
+    setSuggestions(initialSuggestions);
+  }, [language]);
 
   /**
    * Retrieve relevant context for a user query
@@ -159,12 +173,6 @@ export function useAIAssistant(
       try {
         // Retrieve relevant context
         const context = await retrieveContext(message);
-
-        if (context.length === 0) {
-          throw new Error(
-            'No relevant context found. Try asking about specific topics from the textbook.'
-          );
-        }
 
         // Format conversation history
         const history = formatConversationHistory(messages, maxHistory);
