@@ -102,10 +102,13 @@ The **Physical AI & Humanoid Robotics Book** is a comprehensive, bilingual educa
 ### 🎮 Interactive Learning
 
 - **8 Simulation Exercises** - Hands-on practice with ROS 2, Gazebo, and Isaac Sim
-- **AI Assistant (RAG)** - Intelligent two-stage learning assistant:
-  - **Book-First Responses**: Short, concise answers directly from textbook content (2-4 sentences)
-  - **Detailed Explanations**: Optional in-depth explanations using LLM knowledge on user request
-  - **Clear Chat Option**: Reset conversation anytime with confirmation prompt
+- **AI Assistant (Two-Agent Architecture)** - Intelligent dual-mode learning assistant:
+  - **PRIMARY AGENT (RAG)**: Textbook-based responses with citations when content is found
+  - **SECONDARY AGENT (General Knowledge)**: Confident robotics explanations when textbook context is unavailable
+  - **Automatic Routing**: Seamlessly switches between agents based on query type
+  - **Domain-Aware**: Validates questions stay within Physical AI/Robotics scope
+  - **Natural Conversations**: No "not covered in book" messages - just helpful answers
+  - **Bilingual Support**: Works in both English and Urdu
   - Powered by Gemini 2.5 Flash with keyword-based retrieval
 - **Progress Tracking** - Monitor your learning journey
 - **Code Examples** - Copy-paste ready examples in every chapter
@@ -292,6 +295,69 @@ npm run write-translations -- --locale your-language
 
 ---
 
+## 🤖 AI Assistant Architecture
+
+### Two-Agent System
+
+The AI Assistant uses an intelligent **two-layer agent strategy** to provide optimal learning experiences:
+
+#### PRIMARY AGENT - Textbook RAG Agent
+**Activated when:** Embeddings/keywords find relevant textbook content (`context.length > 0`)
+
+**Features:**
+- Uses textbook-based content for answers
+- Provides structured, cited responses
+- References specific chapters and sections
+- Gives complete answers without asking permission
+- Supports both English and Urdu
+
+#### SECONDARY AGENT - General Knowledge Agent
+**Activated when:** No textbook context found (`context.length === 0`)
+
+**Features:**
+- Answers confidently using general robotics knowledge
+- Provides 1-2 paragraph educational explanations
+- NEVER mentions missing data, embeddings, or textbook
+- Stays within Physical AI/Robotics domain
+- Politely refuses non-robotics questions
+
+### Routing Logic
+
+```
+User Query → Retrieve Context from Embeddings/Keywords
+
+IF context.length > 0:
+    → Route to PRIMARY RAG AGENT
+    → Use textbook content
+    → Provide cited answer
+
+ELSE IF context.length === 0:
+    → Check if robotics-related
+    → IF yes: Route to SECONDARY GENERAL AGENT
+    → IF no: Politely refuse
+
+ELSE:
+    → Ask for clarification
+```
+
+### Safety Features
+
+- ✅ Never contradicts textbook content
+- ✅ Never hallucinates citations
+- ✅ Never blames missing embeddings
+- ✅ Never degrades user confidence
+- ✅ Domain validation for robotics-only queries
+- ✅ Graceful refusal for out-of-scope questions
+
+### Powered By
+
+- **LLM:** Gemini 2.5 Flash via OpenAI-compatible SDK
+- **Retrieval:** Keyword-based search with TF-IDF scoring
+- **Fallback:** CPU-friendly, no GPU required
+- **Languages:** English and Urdu (اردو)
+
+---
+
 ## 🔧 Tech Stack Details
 
 ### Core Technologies
@@ -336,10 +402,12 @@ A comprehensive, bilingual, AI-native textbook that provides:
 ### Innovation
 
 1. **First Bilingual Physical AI Curriculum** - English + Urdu support breaks language barriers
-2. **AI-Native Design** - Intelligent two-stage learning assistant:
-   - Prioritizes book content for accurate, concise answers
-   - Offers detailed LLM explanations on-demand
-   - Clear chat functionality for fresh starts
+2. **AI-Native Design with Two-Agent Architecture**:
+   - **Primary RAG Agent**: Textbook-based answers with citations and structured explanations
+   - **Secondary General Agent**: Confident robotics knowledge when textbook context is unavailable
+   - **Intelligent Routing**: Automatic agent selection based on query and context availability
+   - **Domain Validation**: Ensures questions stay within Physical AI/Robotics scope
+   - **Seamless Experience**: No mentions of missing data or limitations - just helpful answers
 3. **Simulation-First Approach** - No expensive hardware required, CPU-friendly exercises
 4. **Modern Web Technologies** - Docusaurus 3.9, React 19, TypeScript 5.6
 

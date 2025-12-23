@@ -32,16 +32,26 @@ export default function ChatInterface({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
 
-    // Check if last assistant message suggests more detail
+    // Detail button logic: ONLY show for intentionally brief answers
+    // DO NOT show after full answers, chapter definitions, or introductory concepts
     if (messages.length > 0) {
       const lastMsg = messages[messages.length - 1];
       if (lastMsg.role === 'assistant') {
         const content = lastMsg.content.toLowerCase();
-        const needsDetail = content.includes('would you like') ||
-                           content.includes('detailed explanation') ||
-                           content.includes('کیا آپ') ||
-                           content.includes('تفصیلی');
-        setShowDetailButton(needsDetail);
+
+        // Check if this is an intentionally brief answer that suggests more detail
+        // This should be rare - most answers should be complete
+        const isIntentionallyBrief = (
+          content.length < 200 && // Very short answer
+          messages.length >= 2 && // Has previous context
+          (
+            content.includes('in brief') ||
+            content.includes('short answer') ||
+            content.includes('مختصر')
+          )
+        );
+
+        setShowDetailButton(isIntentionallyBrief);
 
         // Store last user question
         if (messages.length >= 2) {
