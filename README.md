@@ -9,7 +9,8 @@
 [![Node](https://img.shields.io/badge/node-%E2%89%A520.0-brightgreen)]()
 [![Docusaurus](https://img.shields.io/badge/Docusaurus-3.9.2-green)]()
 
-**Live Demo:** [https://HBC01.github.io/physical-ai-humanoid-book/](https://HBC01.github.io/physical-ai-humanoid-book/)
+**Live Demo (Production):** [https://physical-ai-humanoid-book-kappa.vercel.app/](https://physical-ai-humanoid-book-kappa.vercel.app/)
+**GitHub Pages (Static):** [https://HBC01.github.io/physical-ai-humanoid-book/](https://HBC01.github.io/physical-ai-humanoid-book/)
 
 **Hackathon Context:** December 2025 - Building the future of robotics education
 
@@ -486,7 +487,8 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 🎯 Quick Links
 
-- **Live Demo:** [https://HBC01.github.io/physical-ai-humanoid-book/](https://HBC01.github.io/physical-ai-humanoid-book/)
+- **Live Demo (Production):** [https://physical-ai-humanoid-book-kappa.vercel.app/](https://physical-ai-humanoid-book-kappa.vercel.app/)
+- **GitHub Pages (Static):** [https://HBC01.github.io/physical-ai-humanoid-book/](https://HBC01.github.io/physical-ai-humanoid-book/)
 - **Quick Start Guide:** [QUICK_START.md](QUICK_START.md)
 - **Demo Script:** [DEMO_SCRIPT.md](DEMO_SCRIPT.md)
 - **Feature Checklist:** [HACKATHON_CHECKLIST.md](HACKATHON_CHECKLIST.md)
