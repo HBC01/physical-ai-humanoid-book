@@ -1,0 +1,31 @@
+# Week 1: Introduction to ROS 2
+
+## What is ROS 2?
+The Robot Operating System 2 (ROS 2) is a set of software libraries and tools that help you build robot applications.
+
+## rclpy Example: A Simple Publisher
+```python
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+
+class MinimalPublisher(Node):
+    def __init__(self):
+        super().__init__('minimal_publisher')
+        self.publisher_ = self.create_publisher(String, 'topic', 10)
+        timer_period = 0.5
+        self.timer = self.create_timer(timer_period, self.timer_callback)
+
+    def timer_callback(self):
+        msg = String()
+        msg.data = 'Hello World'
+        self.publisher_.publish(msg)
+        self.get_logger().info('Publishing: "%s"' % msg.data)
+
+def main(args=None):
+    rclpy.init(args=args)
+    minimal_publisher = MinimalPublisher()
+    rclpy.spin(minimal_publisher)
+    minimal_publisher.destroy_node()
+    rclpy.shutdown()
+```

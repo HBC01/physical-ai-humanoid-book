@@ -1,0 +1,25 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+
+# Virtual environments
+.venv
+venv/
+
+# Node.js
+node_modules/
+.docusaurus/
+.env*
+*.log
+npm-debug.log*
+
+# Universal
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
