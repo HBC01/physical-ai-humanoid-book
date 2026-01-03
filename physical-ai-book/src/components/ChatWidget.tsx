@@ -15,7 +15,7 @@ const ChatWidget: React.FC = () => {
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const API_URL = process.env.API_URL || 'https://your-vercel-api.vercel.app';
+  const API_URL = process.env.API_URL || 'https://hackathon1-humaniod-robotic-book.vercel.app';
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
