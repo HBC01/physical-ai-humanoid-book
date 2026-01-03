@@ -29,3 +29,7 @@ async def root():
 async def health():
     """Health check endpoint for Vercel"""
     return {"status": "healthy"}
+
+
+# For Vercel serverless deployment
+handler = app

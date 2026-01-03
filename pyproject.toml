@@ -18,4 +18,5 @@ dependencies = [
     "httpx",
     "python-multipart",
     "better-auth",
+    "google-genai",
 ]
