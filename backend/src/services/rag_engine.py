@@ -13,7 +13,7 @@ class RAGEngine:
         results = vector_store.search(query_vector, self.collection)
 
         # 3. Build context
-        context = "\n".join([res.payload["text"] for res in results if "text" in res.payload])
+        context = "\n".join([res.payload.get("text", "") for res in results])
 
         # 4. Generate response
         prompt = f"Using this context:\n{context}\n\nAnswer this question: {user_query}"

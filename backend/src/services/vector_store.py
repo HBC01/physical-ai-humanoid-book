@@ -29,10 +29,10 @@ class VectorStore:
         self.client.upsert(collection_name=collection, points=points)
 
     def search(self, vector: list[float], collection: str, top_k: int = 5):
-        return self.client.search(
+        return self.client.query_points(
             collection_name=collection,
-            query_vector=vector,
+            query=vector,
             limit=top_k
-        )
+        ).points
 
 vector_store = VectorStore()
